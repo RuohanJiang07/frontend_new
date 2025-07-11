@@ -1,3 +1,5 @@
+// the workspace shell (split screen, tabs, windows)
+
 import React from 'react'
 import {
   ArrowLeftIcon,

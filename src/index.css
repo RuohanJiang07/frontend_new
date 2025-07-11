@@ -1,6 +1,9 @@
 @import url('https://fonts.googleapis.com/css2?family=Outfit:wght@300;400;500;600;700&display=swap');
 @import url('https://fonts.googleapis.com/css2?family=Inter:wght@100;200;300;400;500;600;700;800;900&display=swap');
 
+/* Import KaTeX CSS globally */
+@import 'katex/dist/katex.min.css';
+
 @tailwind base;
 @tailwind components;
 @tailwind utilities;
@@ -19,6 +22,63 @@ body {
 
 .font-inter {
   font-family: 'Inter', sans-serif;
+}
+
+/* Global KaTeX Math Styling */
+.katex {
+  font-size: 1em !important;
+  font-family: 'Inter', sans-serif !important;
+}
+
+.katex-display {
+  margin: 1rem 0 !important;
+  text-align: center !important;
+  overflow-x: auto !important;
+  overflow-y: hidden !important;
+}
+
+.katex-display > .katex {
+  display: inline-block !important;
+  white-space: nowrap !important;
+}
+
+/* Ensure math doesn't break layout */
+.katex .base {
+  display: inline-block !important;
+}
+
+/* Custom styling for chemical equations */
+.katex .mord.text {
+  font-family: 'Inter', sans-serif !important;
+}
+
+/* Inline math styling */
+.katex-inline {
+  margin: 0 0.1em !important;
+}
+
+/* Responsive math equations */
+@media (max-width: 640px) {
+  .katex-display {
+    padding: 0 1rem !important;
+  }
+  
+  .katex-display > .katex {
+    white-space: nowrap !important;
+    max-width: 100% !important;
+  }
+}
+
+/* Math equation containers */
+.math-display {
+  margin: 1rem 0 !important;
+  text-align: center !important;
+  overflow-x: auto !important;
+}
+
+.math-inline {
+  display: inline !important;
+  margin: 0 0.1em !important;
 }
 
 @layer base {

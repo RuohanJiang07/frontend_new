@@ -11,9 +11,14 @@ import { Card } from '../../../components/ui/card';
 import ProjectDirectory from '../../../components/main/projectDirectory/ProjectDirectory';
 import { ShiftingDropDown } from '../../../components/main/dropdown/DropDown';
 import CreateWorkspaceModal from '../../../components/main/modals/createWorkspaceModal';
+import { ToastContainer } from '../../../components/ui/ToastContainer';
+import { useToast } from '../../../hooks/useToast';
+import { getAllWorkspaces } from '../../../api/main/workspaces';
 
 function LandingPage() {
   const navigate = useNavigate();
+  const { toasts, removeToast, success, error } = useToast();
+  
   const allTabs = [
     {
       id: "project-directory",
@@ -28,6 +33,7 @@ function LandingPage() {
       name: "Published Projects",
     },
   ];
+  
   const [isModalOpen, setIsModalOpen] = useState(false);
   const tabsRef = useRef<(HTMLElement | null)[]>([]);
   const [activeTabIndex, setActiveTabIndex] = useState<number | null>(0);
@@ -36,18 +42,8 @@ function LandingPage() {
   const [selectedProject, setSelectedProject] = useState<string>("All Projects");
   const [selectedTime, setSelectedTime] = useState<string>("All Time");
   const [searchQuery, setSearchQuery] = useState<string>("");
-
-  const projectNames = [
-    "All Projects",
-    "Computer Science",
-    "Mathematics",
-    "Physics",
-    "Chemistry",
-    "Biology",
-    "Literature",
-    "History",
-    "Philosophy"
-  ];
+  const [projectNames, setProjectNames] = useState<string[]>(["All Projects"]);
+  const [refreshTrigger, setRefreshTrigger] = useState(0);
 
   const timeFilters = [
     "All Time",
@@ -56,6 +52,25 @@ function LandingPage() {
     "Last 30 Days",
     "Last 90 Days"
   ];
+
+  // Fetch workspace names for the project filter dropdown
+  useEffect(() => {
+    const fetchWorkspaceNames = async () => {
+      try {
+        const response = await getAllWorkspaces();
+        if (response.success) {
+          const names = response.workspaces.map(workspace => workspace.workspace_name);
+          const uniqueNames = Array.from(new Set(names));
+          setProjectNames(["All Projects", ...uniqueNames]);
+        }
+      } catch (err) {
+        console.error('Error fetching workspace names:', err);
+        error('Failed to load workspace names for filter');
+      }
+    };
+
+    fetchWorkspaceNames();
+  }, [error, refreshTrigger]);
 
   useEffect(() => {
     if (activeTabIndex === null) {
@@ -73,7 +88,11 @@ function LandingPage() {
 
   const handleCreateWorkspace = (data: any) => {
     console.log('Creating workspace with data:', data);
+    success(`Workspace "${data.name}" created successfully!`);
     setIsModalOpen(false);
+    
+    // Refresh the workspace list by triggering a re-fetch
+    setRefreshTrigger(prev => prev + 1);
   };
 
   const handleLoginClick = () => {
@@ -82,6 +101,9 @@ function LandingPage() {
 
   return (
     <div className="flex bg-[#f7f6f6] min-h-screen">
+      {/* Toast Container */}
+      <ToastContainer toasts={toasts} removeToast={removeToast} />
+      
       <Sidebar />
       <main className="flex-1 flex flex-col">
         <header className="h-14 px-6 flex items-center justify-between border-b border-gray-100">
@@ -224,6 +246,7 @@ function LandingPage() {
             selectedTime={selectedTime}
             searchQuery={searchQuery}
             activeTab={activeTabIndex !== null ? allTabs[activeTabIndex].id : "project-directory"}
+            key={refreshTrigger} // Force re-render when refreshTrigger changes
           />
         </Card>
       </main>
