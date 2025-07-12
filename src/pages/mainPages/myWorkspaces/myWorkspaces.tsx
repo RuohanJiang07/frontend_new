@@ -2,20 +2,20 @@ import { useEffect, useRef, useState } from 'react';
 import { ChevronDownIcon, Languages, PlusIcon, Search } from 'lucide-react';
 import { useNavigate } from 'react-router-dom';
 
-import './LandingPage.css';
-import Sidebar from '../../../components/main/sidebar/Sidebar';
+import './myWorkspaces.css';
+import Sidebar from '../../../components/mainPages/myWorkspaces/sidebar';
 import { DropdownMenu, DropdownMenuTrigger, DropdownMenuContent, DropdownMenuItem } from '@radix-ui/react-dropdown-menu';
 import { Button } from '../../../components/ui/button';
 import { Avatar, AvatarImage, AvatarFallback } from '@radix-ui/react-avatar';
-import { Card } from '../../../components/ui/card';
-import ProjectDirectory from '../../../components/main/projectDirectory/ProjectDirectory';
-import { ShiftingDropDown } from '../../../components/main/dropdown/DropDown';
-import CreateWorkspaceModal from '../../../components/main/modals/createWorkspaceModal';
+import { Card } from '../../../components/mainPages/myWorkspaces/card';
+import ProjectDirectory from '../../../components/mainPages/myWorkspaces/projectDirectory';
+import { ShiftingDropDown } from '../../../components/mainPages/myWorkspaces/shiftingDropdown';
+import CreateWorkspaceModal from '../../../components/mainPages/myWorkspaces/createWorkspaceModal/createWorkspaceModal';
 import { ToastContainer } from '../../../components/ui/ToastContainer';
 import { useToast } from '../../../hooks/useToast';
-import { getAllWorkspaces } from '../../../api/main/workspaces';
+import { getAllWorkspaces } from '../../../api/mainPages/workspaces';
 
-function LandingPage() {
+function MyWorkspaces() {
   const navigate = useNavigate();
   const { toasts, removeToast, success, error } = useToast();
   
@@ -260,4 +260,4 @@ function LandingPage() {
   );
 }
 
-export default LandingPage;
+export default MyWorkspaces;
