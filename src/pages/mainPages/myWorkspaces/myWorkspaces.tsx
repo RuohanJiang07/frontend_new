@@ -18,7 +18,7 @@ import { getAllWorkspaces } from '../../../api/mainPages/workspaces';
 function MyWorkspaces() {
   const navigate = useNavigate();
   const { toasts, removeToast, success, error } = useToast();
-  
+
   const allTabs = [
     {
       id: "project-directory",
@@ -33,7 +33,7 @@ function MyWorkspaces() {
       name: "Published Projects",
     },
   ];
-  
+
   const [isModalOpen, setIsModalOpen] = useState(false);
   const tabsRef = useRef<(HTMLElement | null)[]>([]);
   const [activeTabIndex, setActiveTabIndex] = useState<number | null>(0);
@@ -90,7 +90,7 @@ function MyWorkspaces() {
     console.log('Creating workspace with data:', data);
     success(`Workspace "${data.name}" created successfully!`);
     setIsModalOpen(false);
-    
+
     // Refresh the workspace list by triggering a re-fetch
     setRefreshTrigger(prev => prev + 1);
   };
@@ -103,7 +103,7 @@ function MyWorkspaces() {
     <div className="flex bg-[#f7f6f6] min-h-screen">
       {/* Toast Container */}
       <ToastContainer toasts={toasts} removeToast={removeToast} />
-      
+
       <Sidebar />
       <main className="flex-1 flex flex-col">
         <header className="h-14 px-6 flex items-center justify-between border-b border-gray-100">
