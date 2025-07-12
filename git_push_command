@@ -1,5 +1,0 @@
-git init
-git remote add origin https://github.com/YilinZhao6/aec_frontend_beta.git
-git add .
-git commit -m "UI update"
-git push origin main --force

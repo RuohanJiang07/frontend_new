@@ -1,9 +1,0 @@
-Put reusable components here for the outside workspace here. Create a folder for each component
-
-eg.
--dropdown
-  -dropdown.tsx
--createWorkspaceModal
-  -createWorkspaceModal.css
-  -createWorkspaceModal.tsx
--
