@@ -38,10 +38,10 @@ const driveFolders = Array(9).fill("Lecture 1");
 
 const AiPoweredTools: React.FC = () => {
     return (
-        <div className="w-full min-h-[calc(100vh-80px)] flex flex-col items-center bg-white pt-12">
+        <div className="max-w-full  flex flex-col items-center bg-white pt-12">
             <div>
                 {/* AI-Powered Tools */}
-                <div className="w-full  ">
+                <div className="max-w-full  ">
                     <h2 className="text-[2rem] font-semibold text-[#00276C] mb-4">AI-Powered Tools</h2>
                     <div className="flex items-center mb-2 justify-between ">
                         <span className=" text-base  mr-6 text-[0.75rem]">AI-Chatbots</span>
@@ -51,7 +51,7 @@ const AiPoweredTools: React.FC = () => {
                         {aiTools.map((tool, idx) => (
                             <div
                                 key={tool.title}
-                                className="flex flex-col items-start w-[190px] h-[164px] bg-[#F8F8F8] rounded-[18px] shadow-[0_4px_16px_0_rgba(0,0,0,0.07)] border border-[#ececec] px-4 py-5 relative"
+                                className="flex flex-col items-start w-[11.875rem] h-[164px] bg-[#F8F8F8] rounded-[18px] shadow-[0_4px_16px_0_rgba(0,0,0,0.07)] border border-[#ececec] px-4 py-5 relative"
                             >
                                 <div className="w-14 h-14 flex items-center justify-center mb-3">
                                     {/* 用svg或img占位 */}
@@ -72,11 +72,11 @@ const AiPoweredTools: React.FC = () => {
                 </div>
 
                 {/* Workspace Drive */}
-                <div className="w-full ">
+                <div className="max-w-full ">
                     <h2 className="text-[2rem] font-semibold text-[#00276C] mb-4">Workspace Drive</h2>
-                    <div className="flex  just-between w-full mb-6">
+                    <div className="flex  justify-between max-w-full mb-6">
                         <div className=" text-base  mb-2 text-[#00000099]" >Recent</div>
-                        <div className="flex items-center w-full justify-end">
+                        <div className="flex items-center max-w-full justify-end">
                             <button className=" flex items-center justify-center rounded  mr-2">
                                 <svg xmlns="http://www.w3.org/2000/svg" width="33" height="32" viewBox="0 0 33 32" fill="none">
                                     <rect x="0.5" y="0.5" width="32" height="31" rx="7.5" fill="#F9F9F9" />

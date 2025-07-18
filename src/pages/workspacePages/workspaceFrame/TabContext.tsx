@@ -1,10 +1,11 @@
-import React, { createContext, useContext, useState, ReactNode } from 'react';
-import VerticalTabsCard from './VerticalTabsCard';
-import AiPoweredTools from '@/components/tabPanel/AiPoweredTools';
+import { createContext, useContext, useState, ReactNode } from 'react';
+
+import AiPoweredTools from '@/pages/workspacePages/contents/default/tabPanel/AiPoweredTools';
 
 export interface PageItem {
     title: string;
     children: any[];
+    split?: boolean; // 新增，记录分屏状态
 }
 
 interface TabContextType {
@@ -16,10 +17,19 @@ interface TabContextType {
     addTab: (pageIdx: number, position: 'left' | 'right', tab: any) => void;
     removeTab: (pageIdx: number, position: 'left' | 'right', tabIdx: number) => void;
     renamePage: (idx: number, newTitle: string) => void; // 新增
+    setPageSplit: (idx: number, split: boolean) => void; // 新增
 }
 
 const TabContext = createContext<TabContextType>({
-
+    pages: [],
+    activePage: 0,
+    setActivePage: () => { },
+    addPage: () => { },
+    closePage: () => { },
+    addTab: () => { },
+    removeTab: () => { },
+    renamePage: () => { },
+    setPageSplit: () => { }, // 新增
 } as TabContextType);
 
 export const useTabContext = () => {
@@ -31,37 +41,37 @@ export const useTabContext = () => {
 export const TabProvider = ({ children }: { children: ReactNode }) => {
     const [pages, setPages] = useState<PageItem[]>([
         {
-            title: 'page1xxxxxxxxxxx', children: [
+            title: 'page1',
+            split: false, // 新增
+            children: [
                 {
                     position: "left", tabList: [
                         { tab: "Tab1-1", components: <AiPoweredTools />, tabList: [] },
-                        { tab: "Tab1-2", components: <AiPoweredTools />, tabList: [] },
-                        { tab: "Tab1-3", components: <AiPoweredTools />, tabList: [] },
+
                     ]
                 },
                 {
                     position: "right", tabList: [
                         { tab: "Tab1-1", components: <AiPoweredTools />, tabList: [] },
-                        { tab: "Tab1-2", components: <AiPoweredTools />, tabList: [] },
-                        { tab: "Tab1-3", components: <AiPoweredTools />, tabList: [] },
+
                     ]
                 },
             ]
         },
         {
-            title: 'page1xxxxxxxxxxx', children: [
+            title: 'page1',
+            split: false, // 新增
+            children: [
                 {
                     position: "left", tabList: [
                         { tab: "Tab1-1", components: <AiPoweredTools />, tabList: [] },
-                        { tab: "Tab1-2", components: <AiPoweredTools />, tabList: [] },
-                        { tab: "Tab1-3", components: <AiPoweredTools />, tabList: [] },
+
                     ]
                 },
                 {
                     position: "right", tabList: [
                         { tab: "Tab1-1", components: <AiPoweredTools />, tabList: [] },
-                        { tab: "Tab1-2", components: <AiPoweredTools />, tabList: [] },
-                        { tab: "Tab1-3", components: <AiPoweredTools />, tabList: [] },
+
                     ]
                 },
             ]
@@ -76,8 +86,18 @@ export const TabProvider = ({ children }: { children: ReactNode }) => {
             {
                 title,
                 children: [
-                    { position: "left", tabList: [] },
-                    { position: "right", tabList: [] }
+                    {
+                        position: "left", tabList: [
+                            { tab: "Tab1-1", components: <AiPoweredTools />, tabList: [] },
+
+                        ]
+                    },
+                    {
+                        position: "right", tabList: [
+                            { tab: "Tab1-1", components: <AiPoweredTools />, tabList: [] },
+
+                        ]
+                    },
                 ]
             }
         ]);
@@ -132,6 +152,14 @@ export const TabProvider = ({ children }: { children: ReactNode }) => {
         }));
     };
 
+    const setPageSplit = (idx: number, split: boolean) => {
+        setPages(prev =>
+            prev.map((page, i) =>
+                i === idx ? { ...page, split } : page
+            )
+        );
+    };
+
     return (
         <TabContext.Provider
             value={{
@@ -142,7 +170,8 @@ export const TabProvider = ({ children }: { children: ReactNode }) => {
                 closePage,
                 addTab,
                 removeTab,
-                renamePage
+                renamePage,
+                setPageSplit,
             }}
         >
             {children}

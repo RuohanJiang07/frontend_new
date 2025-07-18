@@ -2,7 +2,7 @@
 import { Routes, Route } from 'react-router-dom'
 import LoginPage from './pages/mainPages/login/LoginPage'
 import MyWorkspaces from './pages/mainPages/myWorkspaces/myWorkspaces'
-import BookWorkspaces from './pages/mainPages/myWorkspaces/BookWorkspaces'
+import BookWorkspaces from './pages/workspacePages/workspaceFrame/BookWorkspaces'
 
 function App() {
   return (
