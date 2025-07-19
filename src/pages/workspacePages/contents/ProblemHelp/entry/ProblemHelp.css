@@ -1,0 +1,402 @@
+/* ProblemHelp Entry Page Styles */
+
+/* Main container styles */
+.problem-help-container {
+  padding: 40px;
+  display: flex;
+  flex-direction: column;
+  align-items: center;
+  height: calc(100vh - 88px);
+  overflow-y: auto;
+}
+
+/* Upload box styles */
+.problem-help-upload-section {
+  position: relative;
+  width: 917px;
+  max-width: 100%;
+  flex-shrink: 0;
+}
+
+.problem-help-upload-box {
+  width: 799px;
+  height: 100px;
+  margin: 0 auto;
+  border-radius: 8px;
+  border: 2px dashed #4C6694;
+  border-style: dashed;
+  border-width: 2px;
+  border-color: #4C6694;
+  background: rgba(232, 238, 247, 0.80);
+  box-shadow: 0px 3px 60px 1px rgba(72, 112, 208, 0.08);
+  display: flex;
+  flex-direction: column;
+  align-items: center;
+  justify-content: center;
+  cursor: pointer;
+  transition: all 0.2s ease;
+}
+
+.problem-help-upload-box:hover {
+  background: rgba(232, 238, 247, 0.95);
+}
+
+.problem-help-upload-icon {
+  width: 47px;
+  height: 45px;
+  margin-bottom: 8px;
+}
+
+.problem-help-upload-text {
+  color: #99A9CB;
+  font-family: -apple-system, BlinkMacSystemFont, "SF Pro", "Segoe UI", Roboto, Helvetica, Arial, sans-serif;
+  font-size: 17px;
+  font-weight: 500;
+  line-height: normal;
+  letter-spacing: -0.51px;
+}
+
+/* Header section styles */
+.problem-help-header {
+  display: flex;
+  align-items: center;
+  justify-content: center;
+  margin-bottom: 40px;
+}
+
+.problem-help-header-icon {
+  width: 78px;
+  height: 83px;
+  flex-shrink: 0;
+}
+
+.problem-help-header-text {
+  margin-left: 13px;
+}
+
+.problem-help-title {
+  color: #00276C;
+  font-size: 26px;
+  font-weight: 500;
+  padding-top: 2px;
+}
+
+.problem-help-subtitle {
+  color: #000;
+  font-size: 15px;
+  font-weight: 500;
+}
+
+/* Input section styles */
+.problem-help-input-section {
+  margin-top: -6px;
+  width: 917px;
+  max-width: 100%;
+  flex-shrink: 0;
+}
+
+/* Model selection dropdown styles */
+.problem-help-model-dropdown {
+  position: absolute;
+  bottom: 13px;
+  left: 16px;
+  width: 120px;
+  height: 32px;
+  border-radius: 20px;
+  background: white;
+  border: 1.2px solid #4C6694;
+  display: flex;
+  align-items: center;
+  justify-content: center;
+  gap: 6px;
+  cursor: pointer;
+  transition: all 0.2s ease;
+}
+
+.problem-help-model-dropdown:hover {
+  background: rgba(76, 102, 148, 0.05);
+}
+
+.problem-help-model-icon {
+  width: 21px;
+  height: 21px;
+}
+
+.problem-help-model-text {
+  color: #4C6694;
+  font-family: -apple-system, BlinkMacSystemFont, "SF Pro", "Segoe UI", Roboto, Helvetica, Arial, sans-serif;
+  font-size: 14px;
+  font-weight: 510;
+  line-height: normal;
+}
+
+.problem-help-dropdown-arrow {
+  width: 19px;
+  height: 19px;
+}
+
+/* Input box styles */
+.problem-help-input-box {
+  margin-top: 0;
+  width: 100%;
+  height: 158px;
+  background: white;
+  border: 1.2px solid #E0E0E0;
+  border-radius: 15px;
+  box-shadow: 0px 1px 15px rgba(111, 111, 111, 0.07);
+  padding: 16px;
+  position: relative;
+  transition: border-color 0.2s ease, box-shadow 0.2s ease;
+}
+
+.problem-help-input-box.focused {
+  border-color: #4C6694;
+  box-shadow: 0px 1px 15px rgba(76, 102, 148, 0.15);
+}
+
+.problem-help-input {
+  width: 100%;
+  height: calc(100% - 33px);
+  border: none;
+  outline: none;
+  font-family: -apple-system, BlinkMacSystemFont, "SF Pro", "Segoe UI", Roboto, Helvetica, Arial, sans-serif;
+  font-size: 18px;
+  font-weight: 500;
+  color: #000;
+  letter-spacing: -0.6px;
+  line-height: normal;
+  resize: none;
+}
+
+.problem-help-input::placeholder {
+  color: #969696;
+}
+
+/* Button container styles */
+.problem-help-buttons {
+  position: absolute;
+  bottom: 13px;
+  right: 13px;
+  display: flex;
+  gap: 7px;
+}
+
+.problem-help-button {
+  width: 33px;
+  height: 33px;
+  border-radius: 50%;
+  background: #fff;
+  border: 1.2px solid #B5B5B5;
+  display: flex;
+  align-items: center;
+  justify-content: center;
+  cursor: pointer;
+  transition: all 0.2s ease;
+}
+
+.problem-help-button:hover {
+  border-color: #4C6694;
+}
+
+.problem-help-button.selected {
+  background: #4C6694;
+  border-color: #4C6694;
+}
+
+.problem-help-button-icon {
+  width: 21px;
+  height: 21px;
+  transition: filter 0.2s ease;
+}
+
+.problem-help-button.selected .problem-help-button-icon {
+  filter: brightness(0) invert(1);
+}
+
+/* History section styles */
+.problem-help-history-section {
+  margin-top: 30px;
+  width: 917px;
+  max-width: 100%;
+  flex-shrink: 0;
+}
+
+.problem-help-history-header {
+  display: flex;
+  justify-content: space-between;
+  align-items: center;
+  margin-bottom: 15px;
+  width: 100%;
+}
+
+.problem-help-history-title {
+  width: 133px;
+  height: 35px;
+  border-radius: 20px;
+  border: 1.2px solid #4C6694;
+  background-color: white;
+  display: flex;
+  align-items: center;
+  justify-content: center;
+  gap: 8px;
+  color: #4C6694;
+  font-family: -apple-system, BlinkMacSystemFont, "SF Pro", "Segoe UI", Roboto, Helvetica, Arial, sans-serif;
+  font-size: 15px;
+  font-weight: 510;
+  line-height: normal;
+  letter-spacing: -0.48px;
+  transform: scale(1.05);
+}
+
+.problem-help-search-container {
+  display: inline-flex;
+  height: 32px;
+  padding: 4px 12px;
+  align-items: center;
+  gap: 5px;
+  flex-shrink: 0;
+  width: 248px;
+  border-radius: 100px;
+  border: 1px solid #B1B1B1;
+  background: #FFF;
+}
+
+.problem-help-search-icon {
+  width: 32px;
+  height: 32px;
+  flex-shrink: 0;
+}
+
+.problem-help-search-input {
+  flex: 1;
+  border: none;
+  outline: none;
+  background: transparent;
+  color: #000;
+  font-family: -apple-system, BlinkMacSystemFont, "SF Pro", "Segoe UI", Roboto, Helvetica, Arial, sans-serif;
+  font-size: 14px;
+  font-weight: 400;
+  line-height: normal;
+}
+
+.problem-help-search-input::placeholder {
+  color: #B1B1B1;
+}
+
+/* History cards section styles - Independent frame */
+.problem-help-cards-container {
+  margin-top: 10px;
+  width: 1054px; 
+  max-width: 100%;
+  display: grid;
+  grid-template-columns: repeat(4, 234px);
+  gap: 36px calc((1054px - 936px) / 3);
+  justify-content: space-between;
+  margin-left: auto;
+  margin-right: auto;
+}
+
+/* For split screen, show 3 cards per row */
+.problem-help-cards-container.split {
+  grid-template-columns: repeat(3, 234px);
+  gap: 36px calc((1054px - 702px) / 2);
+}
+
+.problem-help-card {
+  display: flex;
+  width: 234px;
+  height: 140px;
+  padding: 12px 10px;
+  flex-direction: column;
+  align-items: flex-start;
+  gap: 20px;
+  flex-shrink: 0;
+  border-radius: 12px;
+  border: 1px solid #D9D9D9;
+  background: #FFF;
+  cursor: pointer;
+  transition: transform 0.2s, box-shadow 0.2s;
+}
+
+.problem-help-card:hover {
+  transform: translateY(-2px);
+  box-shadow: 0 4px 12px rgba(0, 0, 0, 0.1);
+  border-color: #4C6694;
+  background-color: #f8f9ff;
+}
+
+.problem-help-card:active {
+  transform: translateY(0px);
+  box-shadow: 0 2px 6px rgba(0, 0, 0, 0.15);
+}
+
+.problem-help-card-title {
+  width: 214px;
+  height: 58px;
+  flex-shrink: 0;
+  overflow: hidden;
+  text-overflow: ellipsis;
+  display: -webkit-box;
+  -webkit-line-clamp: 3;
+  -webkit-box-orient: vertical;
+  color: #000;
+  font-family: "SF Pro", -apple-system, BlinkMacSystemFont, "Segoe UI", Roboto, Helvetica, Arial, sans-serif;
+  font-size: 15px;
+  font-weight: 510;
+  line-height: 1.3;
+}
+
+.problem-help-card-detail {
+  display: flex;
+  width: 159px;
+  padding-bottom: 2px;
+  flex-direction: column;
+  justify-content: center;
+  align-items: flex-start;
+  gap: 4px;
+}
+
+.problem-help-card-tag {
+  display: inline-flex;
+  align-items: center;
+  justify-content: center;
+  border-radius: 5px;
+  font-family: "SF Pro", -apple-system, BlinkMacSystemFont, "Segoe UI", Roboto, Helvetica, Arial, sans-serif;
+  font-size: 10px;
+  font-weight: 510;
+  line-height: normal;
+  padding: 0 6px;
+}
+
+.problem-help-card-tag.step-by-step {
+  width: 78px;
+  height: 18px;
+  background-color: #D4E1F7;
+  color: #23427A;
+}
+
+.problem-help-card-tag.solution {
+  width: 49px;
+  height: 18px;
+  background-color: #D5EBF3;
+  color: #1C5B72;
+}
+
+.problem-help-card-date {
+  display: flex;
+  align-items: center;
+}
+
+.problem-help-card-date-icon {
+  width: 15px;
+  height: 15px;
+}
+
+.problem-help-card-date-text {
+  margin-left: 4px;
+  color: #515151;
+  font-family: "SF Pro", -apple-system, BlinkMacSystemFont, "Segoe UI", Roboto, Helvetica, Arial, sans-serif;
+  font-size: 11px;
+  font-weight: 510;
+  line-height: normal;
+}
