@@ -75,7 +75,7 @@ export const TabProvider = ({ children }: { children: ReactNode }) => {
                 {
                     id: 'screen-1',
                     tabList: [
-                        { tab: "Tab1-1", components: <AiPoweredTools />, tabList: [] },
+                        { tab: "New Tab", components: <AiPoweredTools key="ai-tools-page1" />, tabList: [] },
                     ],
                     state: 'full-screen'
                 }
@@ -87,7 +87,7 @@ export const TabProvider = ({ children }: { children: ReactNode }) => {
                 {
                     id: 'screen-1',
                     tabList: [
-                        { tab: "Tab2-1", components: <AiPoweredTools />, tabList: [] },
+                        { tab: "New Tab", components: <AiPoweredTools key="ai-tools-page2" />, tabList: [] },
                     ],
                     state: 'full-screen'
                 }
@@ -117,7 +117,7 @@ export const TabProvider = ({ children }: { children: ReactNode }) => {
                     {
                         id: 'screen-1',
                         tabList: [
-                            { tab: "Tab1-1", components: <AiPoweredTools />, tabList: [] },
+                            { tab: "New Tab", components: <AiPoweredTools key={`ai-tools-${Date.now()}`} />, tabList: [] },
                         ],
                         state: 'full-screen'
                     }
@@ -193,7 +193,7 @@ export const TabProvider = ({ children }: { children: ReactNode }) => {
                         {
                             id: newScreenId,
                             tabList: [
-                                { tab: "Tab1-1", components: <AiPoweredTools />, tabList: [] },
+                                { tab: "New Tab", components: <AiPoweredTools key={`ai-tools-split-${Date.now()}`} />, tabList: [] },
                             ],
                             state: 'split-right'
                         }
@@ -214,7 +214,7 @@ export const TabProvider = ({ children }: { children: ReactNode }) => {
                         {
                             id: newScreenId,
                             tabList: [
-                                { tab: "Tab1-1", components: <AiPoweredTools />, tabList: [] },
+                                { tab: "New Tab", components: <AiPoweredTools key={`ai-tools-split-${Date.now()}`} />, tabList: [] },
                             ],
                             state: 'split-right'
                         }
@@ -241,7 +241,7 @@ export const TabProvider = ({ children }: { children: ReactNode }) => {
                         {
                             id: 'screen-1',
                             tabList: [
-                                { tab: "Tab1-1", components: <AiPoweredTools />, tabList: [] },
+                                { tab: "New Tab", components: <AiPoweredTools key={`ai-tools-close-${Date.now()}`} />, tabList: [] },
                             ],
                             state: 'full-screen'
                         }

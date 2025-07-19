@@ -1,4 +1,4 @@
-import React, { useState } from 'react';
+import React, { useState, useEffect } from 'react';
 import { Expand, Maximize, PlusIcon, X } from 'lucide-react';
 import { useTabContext, TabContextItem } from './TabContext';
 import AiPoweredTools from '../contents/default/tabPanel/AiPoweredTools';
@@ -32,20 +32,46 @@ const VerticalTabsCard: React.FC<VerticalTabsCardProps> = ({
     isSplitMode = false,
     isAnimating = false,
 }) => {
-    const { addTab } = useTabContext();
+    const { addTab, removeTab, activePage } = useTabContext();
     const [activeIdx, setActiveIdx] = useState(0);
+
+    // Ensure activeIdx is always valid when data changes
+    useEffect(() => {
+        if (activeIdx >= data.length && data.length > 0) {
+            setActiveIdx(data.length - 1);
+        }
+    }, [data.length, activeIdx]);
 
     const handleClose = (e: React.MouseEvent, idx: number) => {
         e.stopPropagation();
         if (data.length > 1) {
-            const newActiveIdx = idx === activeIdx ? (idx === 0 ? 1 : idx - 1) : activeIdx;
+            let newActiveIdx = activeIdx;
+            
+            // If we're closing the active tab
+            if (idx === activeIdx) {
+                // If it's the last tab, go to the previous one
+                if (idx === data.length - 1) {
+                    newActiveIdx = idx - 1;
+                } else {
+                    // Otherwise, stay at the same index (next tab will shift up)
+                    newActiveIdx = idx;
+                }
+            } else if (idx < activeIdx) {
+                // If we're closing a tab before the active one, adjust the index
+                newActiveIdx = activeIdx - 1;
+            }
+            // If we're closing a tab after the active one, no change needed
+            
             setActiveIdx(newActiveIdx);
-            // Remove tab logic would go here
+            // Remove tab from the context
+            removeTab(activePage, screenId, idx);
         }
     };
 
     const handleAdd = () => {
-        addTab(0, screenId, { tab: "New Tab", components: <AiPoweredTools />, tabList: [] });
+        addTab(activePage, screenId, { tab: "New Tab", components: <AiPoweredTools />, tabList: [] });
+        // Switch to the newly created tab (it will be the last tab in the list)
+        setActiveIdx(data.length);
     };
 
     // Show only tab list when collapsed
