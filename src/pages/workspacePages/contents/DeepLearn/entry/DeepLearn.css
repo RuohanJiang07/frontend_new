@@ -1,0 +1,625 @@
+/* DeepLearn Entry Page Styles */
+
+/* Main container styles - no frame, just content */
+.deep-learn-container {
+    display: flex;
+    flex-direction: column;
+    align-items: center;
+    padding: 35px 48px 20px 48px; /* Reduced bottom padding */
+    width: 100%;
+    max-width: 1200px;
+    margin: 0 auto;
+  }
+  
+  /* Header section styles */
+  .deep-learn-header {
+    display: flex;
+    align-items: center;
+    justify-content: center;
+    margin-bottom: 25px;
+  }
+  
+  .deep-learn-header-icon {
+    width: 63px;
+    height: 59px;
+    flex-shrink: 0;
+  }
+  
+  .deep-learn-header-text {
+    margin-left: 13px;
+  }
+  
+  .deep-learn-title {
+    color: #00276C;
+    font-size: 26px;
+    font-weight: 500;
+    padding-top: 2px;
+  }
+  
+  .deep-learn-subtitle {
+    color: #000;
+    font-size: 15px;
+    font-weight: 500;
+  }
+  
+  /* Input section styles */
+  .deep-learn-input-section {
+    margin-top: 27px;
+    width: 100%;
+    max-width: 927px;
+    flex-shrink: 0;
+  }
+  
+  /* Input box styles */
+  .deep-learn-input-box {
+    margin-top: 15px;
+    width: 100%;
+    height: 135px;
+    background: white;
+    border: 1.2px solid #E0E0E0;
+    border-radius: 15px;
+    box-shadow: 0px 1px 15px rgba(111, 111, 111, 0.07);
+    padding: 16px;
+    position: relative;
+    transition: border-color 0.2s ease, box-shadow 0.2s ease;
+  }
+  
+  .deep-learn-input-box.focused {
+    border-color: #4C6694;
+    box-shadow: 0px 1px 15px rgba(76, 102, 148, 0.15);
+  }
+  
+  .deep-learn-input {
+    width: 100%;
+    height: calc(100% - 33px);
+    border: none;
+    outline: none;
+    font-family: -apple-system, BlinkMacSystemFont, "SF Pro", "Segoe UI", Roboto, Helvetica, Arial, sans-serif;
+    font-size: 18px;
+    font-weight: 500;
+    color: #000;
+    letter-spacing: -0.6px;
+    line-height: normal;
+    resize: none;
+  }
+  
+  .deep-learn-input::placeholder {
+    color: #969696;
+  }
+  
+  /* Button container styles */
+  .deep-learn-buttons {
+    position: absolute;
+    bottom: 13px;
+    right: 16px;
+    display: flex;
+    gap: 7px;
+  }
+  
+  .deep-learn-button {
+    width: 33px;
+    height: 33px;
+    border-radius: 50%;
+    background: #fff;
+    border: 1.2px solid #B5B5B5;
+    display: flex;
+    align-items: center;
+    justify-content: center;
+    cursor: pointer;
+    transition: all 0.2s ease;
+  }
+  
+  .deep-learn-button:hover {
+    border-color: #4C6694;
+  }
+  
+  .deep-learn-button.selected {
+    background: #4C6694;
+    border-color: #4C6694;
+  }
+  
+  .deep-learn-button-icon {
+    width: 21px;
+    height: 21px;
+    transition: filter 0.2s ease;
+  }
+  
+  .deep-learn-button.selected .deep-learn-button-icon {
+    filter: brightness(0) invert(1);
+  }
+  
+  /* Trending/History section styles */
+  .deep-learn-trending-history-section {
+    margin-top: 30px;
+    width: 100%;
+    max-width: 967px;
+    flex-shrink: 0;
+  }
+  
+  .deep-learn-tab-buttons {
+    display: flex;
+    justify-content: center;
+    gap: 15px;
+    margin-bottom: 12px;
+  }
+  
+  .deep-learn-tab-button.trending {
+    width: 122px;
+    height: 35px;
+    border-radius: 20px; 
+    border: 1.2px solid #4C6694;
+    display: flex;
+    align-items: center;
+    justify-content: center;
+    gap: 8px;
+    cursor: pointer;
+    transition: all 0.2s ease;
+  }
+  
+  .deep-learn-tab-button.history {
+    width: 133px;
+    height: 35px;
+    border-radius: 20px;
+    border: 1.2px solid #4C6694;
+    display: flex;
+    align-items: center;
+    justify-content: center;
+    gap: 8px;
+    cursor: pointer;
+    transition: all 0.2s ease;
+  }
+  
+  .deep-learn-tab-button.selected {
+    background-color: #4C6694;
+  }
+  
+  .deep-learn-tab-button-icon {
+    width: 19px;
+    height: 19px;
+    transition: filter 0.3s ease;
+  }
+  
+  .deep-learn-tab-button-text {
+    font-family: -apple-system, BlinkMacSystemFont, "SF Pro", "Segoe UI", Roboto, Helvetica, Arial, sans-serif;
+    font-size: 15px;
+    font-weight: 510;
+    line-height: normal;
+    letter-spacing: -0.48px; 
+    transition: color 0.3s ease, transform 0.3s ease 0.05s;
+  }
+  
+  .deep-learn-tab-button.selected .deep-learn-tab-button-icon {
+    filter: brightness(0) invert(1);
+  }
+  
+  .deep-learn-tab-button.selected .deep-learn-tab-button-text { 
+    color: white;
+    transform: scale(1.05); 
+  }
+  
+  .deep-learn-tab-button:not(.selected) .deep-learn-tab-button-icon {
+    filter: brightness(0) saturate(100%) invert(32%) sepia(9%) saturate(2096%) hue-rotate(182deg) brightness(93%) contrast(87%);
+  }
+  
+  .deep-learn-tab-button:not(.selected) .deep-learn-tab-button-text {
+    color: #4C6694;
+  }
+  
+  /* Trending content styles */
+  .deep-learn-trending-content {
+    margin-top: 15px; 
+    display: flex;
+    flex-direction: column;
+    gap: 20px; /* Reduced gap between rows */
+    padding-bottom: 28px; /* Increased bottom padding to match container padding + extra space */
+    transition: transform 0.4s ease-in-out, opacity 0.4s ease-in-out, visibility 0.4s ease-in-out;
+    width: 100%;
+  }
+  
+  /* Custom scrollbar styles */
+  .deep-learn-trending-content::-webkit-scrollbar {
+    width: 6px;
+  }
+  
+  .deep-learn-trending-content::-webkit-scrollbar-track {
+    background: transparent;
+  }
+  
+  .deep-learn-trending-content::-webkit-scrollbar-thumb {
+    background-color: rgba(0, 0, 0, 0.2);
+    border-radius: 3px;
+  }
+  
+  .trending-row {
+  display: grid;
+  grid-template-columns: repeat(auto-fit, minmax(220px, 1fr));
+  gap: 30px; /* Fixed gap that doesn't change with container width */
+}
+
+.trending-card {
+  width: 100%; /* Let grid handle the sizing */
+  min-width: 220px; /* Minimum width cutoff */
+  flex-shrink: 0;
+  flex-grow: 0;
+  cursor: pointer;
+  overflow: visible;
+}
+
+/* Responsive breakpoint: when cards would be below 220px, switch to 2 per row */
+@media (max-width: 721px) {
+  .trending-row {
+    grid-template-columns: repeat(2, 1fr); /* Force 2 cards per row */
+    gap: 30px; /* Keep consistent gap */
+  }
+}
+
+/* Additional responsive adjustments for very small screens */
+@media (max-width: 480px) {
+  .deep-learn-container {
+    padding: 24px;
+  }
+  
+  .deep-learn-input-section {
+    max-width: 100%;
+  }
+  
+  .deep-learn-trending-history-section {
+    max-width: 100%;
+  }
+  
+  .trending-row {
+    grid-template-columns: 1fr; /* Single card per row on very small screens */
+    gap: 30px; /* Keep consistent gap */
+  }
+  
+  .trending-card {
+    min-width: auto; /* Remove min-width constraint on very small screens */
+  }
+}
+  
+  .trending-card-image {
+    width: 100%;
+    height: 140px;
+    border-radius: 10px;
+    border: 1.2px solid #B7B7B7;
+    object-fit: cover;
+    transition: border-color 0.2s ease, box-shadow 0.2s ease, transform 0.2s ease;
+  }
+  
+  .trending-card:hover .trending-card-image {
+    border-color: #4C6694;
+    box-shadow: 0px 4px 12px rgba(76, 102, 148, 0.15);
+    transform: translateY(-2px);
+  }
+  
+  .trending-card-title {
+    margin-top: 5px;
+    min-height: 32px;
+    color: #141414;
+    font-family: "SF Pro", -apple-system, BlinkMacSystemFont, "Segoe UI", Roboto, Helvetica, Arial, sans-serif;
+    font-size: 13px;
+    font-weight: 500;
+    line-height: normal;
+  }
+  
+  .trending-card-footer {
+    margin-top: 5px;
+    display: flex;
+    justify-content: space-between;
+    align-items: center;
+  }
+  
+  .trending-card-author {
+    display: flex;
+    align-items: center;
+    gap: 5px;
+  }
+  
+  .trending-card-author-icon {
+    width: 15px;
+    height: 15px;
+  }
+  
+  .trending-card-author-text {
+    color: #515151;
+    font-family: "SF Pro", -apple-system, BlinkMacSystemFont, "Segoe UI", Roboto, Helvetica, Arial, sans-serif;
+    font-size: 11px;
+    font-weight: 500;
+    line-height: normal;
+  }
+  
+  .trending-card-heat {
+    display: flex;
+    align-items: center;
+    gap: 5px;
+  }
+  
+  .trending-card-heat-icon {
+    width: 15px;
+    height: 15px;
+  }
+  
+  .trending-card-heat-text {
+    color: #515151;
+    font-family: "SF Pro", -apple-system, BlinkMacSystemFont, "Segoe UI", Roboto, Helvetica, Arial, sans-serif;
+    font-size: 11px;
+    font-weight: 500;
+    line-height: normal;
+  }
+  
+  /* History content styles */
+  .deep-learn-history-content {
+    margin-top: 15px; 
+    padding-right: 10px; /* Match the padding of trending content */
+    transform: translateX(100%);
+    transition: transform 0.4s ease-in-out, opacity 0.4s ease-in-out, visibility 0.4s ease-in-out;
+    position: absolute;
+    top: 0;
+    left: 0;
+    right: 0;
+    width: 100%;
+  }
+  
+  /* History items styles */
+  .history-items {
+    display: flex;
+    flex-direction: column;
+    gap: 12px;
+  }
+  
+  .history-item {
+    display: flex;
+    align-items: center;
+    justify-content: space-between;
+    padding: 16px;
+    background: white;
+    border: 1.2px solid #E0E0E0;
+    border-radius: 12px;
+    cursor: pointer;
+    transition: border-color 0.2s ease, box-shadow 0.2s ease;
+    overflow: visible;
+  }
+  
+  .history-item:hover {
+    border-color: #4C6694;
+    box-shadow: 0px 2px 8px rgba(76, 102, 148, 0.1);
+  }
+  
+  .history-item-content {
+    flex: 1;
+  }
+  
+  .history-item-title {
+    color: #00276C;
+    font-family: -apple-system, BlinkMacSystemFont, "SF Pro", "Segoe UI", Roboto, Helvetica, Arial, sans-serif;
+    font-size: 16px;
+    font-weight: 500;
+    line-height: normal;
+    margin-bottom: 4px;
+  }
+  
+  .history-item-query {
+    color: #666;
+    font-family: -apple-system, BlinkMacSystemFont, "SF Pro", "Segoe UI", Roboto, Helvetica, Arial, sans-serif;
+    font-size: 14px;
+    font-weight: 400;
+    line-height: normal;
+    margin-bottom: 4px;
+  }
+  
+  .history-item-date {
+    color: #999;
+    font-family: -apple-system, BlinkMacSystemFont, "SF Pro", "Segoe UI", Roboto, Helvetica, Arial, sans-serif;
+    font-size: 12px;
+    font-weight: 400;
+    line-height: normal;
+  }
+  
+  .history-item-arrow {
+    display: flex;
+    align-items: center;
+    justify-content: center;
+    width: 24px;
+    height: 24px;
+    opacity: 0.5;
+    transition: opacity 0.2s ease;
+  }
+  
+  .history-item:hover .history-item-arrow {
+    opacity: 1;
+  }
+  
+  .history-item-arrow-icon {
+    width: 16px;
+    height: 16px;
+    filter: brightness(0) saturate(100%) invert(32%) sepia(9%) saturate(2096%) hue-rotate(182deg) brightness(93%) contrast(87%);
+  }
+  
+  /* Tab content container */
+  .deep-learn-tab-content {
+    position: relative;
+    overflow: hidden;
+    min-height: 0;
+  }
+  
+  /* Animation states for tab content */
+  .tab-trending .deep-learn-trending-content {
+    transform: translateX(0);
+    opacity: 1;
+    visibility: visible;
+    position: relative;
+  }
+  
+  .tab-trending .deep-learn-history-content {
+    transform: translateX(100%);
+    opacity: 0;
+    visibility: hidden;
+    position: absolute;
+  }
+  
+  .tab-history .deep-learn-trending-content {
+    transform: translateX(-100%);
+    opacity: 0;
+    visibility: hidden;
+    position: absolute;
+  }
+  
+  .tab-history .deep-learn-history-content {
+    transform: translateX(0);
+    opacity: 1;
+    visibility: visible;
+    position: relative;
+  }
+  
+  /* Mode toggle styles */
+  .mode-toggle-container {
+    display: flex;
+    align-items: center;
+    justify-content: flex-start;
+    margin-bottom: 16px;
+  }
+  
+  .mode-toggle {
+    width: 280px;
+    height: 36px;
+    border-radius: 20px;
+    border: 1.2px solid #D8D8D8;
+    display: flex;
+    position: relative;
+    overflow: hidden;
+  }
+  
+  .mode-toggle-option {
+    flex: 1;
+    display: flex;
+    align-items: center;
+    justify-content: center;
+    gap: 6px;
+    z-index: 1;
+    cursor: pointer;
+    font-size: 15px;
+    transition: color 0.3s ease;
+  }
+  
+  .mode-toggle-slider {
+    position: absolute;
+    width: 50%;
+    height: 100%;
+    background-color: #4C6694;
+    border-radius: 20px;
+    transition: transform 0.3s ease;
+  }
+  
+  .mode-toggle-option.selected {
+    color: white;
+    font-weight: 500;
+  }
+  
+  .mode-toggle-option.unselected {
+    color: #4C6694;
+    font-weight: 500;
+    letter-spacing: -0.48px;
+  }
+  
+  .mode-toggle-icon {
+    width: 20px;
+    height: 20px;
+  }
+  
+  /* Web search toggle styles */
+  .web-search-toggle {
+    margin-left: 16px;
+    width: 30px;
+    height: 30px;
+    display: flex;
+    align-items: center;
+    justify-content: center;
+    cursor: pointer;
+    transition: color 0.3s ease, transform 0.3s ease, opacity 0.3s ease, filter 0.3s ease;
+    padding: 0;
+  }
+  
+  .web-search-toggle.selected {
+    color: #4C6694;
+    transform: scale(1.05);
+    opacity: 1;
+  }
+  
+  .web-search-toggle.unselected {
+    color: #797979;
+    transform: scale(0.95);
+    opacity: 0.9;
+  }
+  
+  .web-search-toggle:hover {
+    opacity: 0.8;
+  }
+  
+  /* Profile and reference button hover effects */
+  .deep-learn-button {
+    transition: all 0.2s ease, box-shadow 0.2s ease;
+    border: 1.2px solid #B5B5B5; 
+  }
+  
+  .deep-learn-button:hover {
+    border-color: #4C6694;
+    box-shadow: 0px 2px 8px rgba(76, 102, 148, 0.15) !important;
+  }
+  
+  .deep-learn-button.selected {
+    background: #4C6694;
+    border-color: #4C6694;
+    box-shadow: 0px 2px 8px rgba(76, 102, 148, 0.25) !important;
+  }
+  
+  /* Button separator line */
+  .deep-learn-button-separator {
+    width: 1px;
+    height: 33px;
+    background-color: #B5B5B5;
+    margin: 0 3px;
+    align-self: center;
+  }
+  
+  /* Send button styles */
+  .deep-learn-send-button {
+    width: 33px;
+    height: 33px;
+    border-radius: 50%;
+    background: #f5f5f5;
+    border: 1.2px solid #B5B5B5;
+    display: flex;
+    align-items: center;
+    justify-content: center;
+    cursor: pointer;
+    transition: all 0.2s ease;
+    opacity: 0.5;
+  }
+  
+  .deep-learn-send-button.active {
+    background: #4C6694;
+    border-color: #4C6694;
+    opacity: 1;
+    box-shadow: 0px 2px 8px rgba(76, 102, 148, 0.25);
+  }
+  
+  .deep-learn-send-button:hover {
+    border-color: #4C6694;
+    box-shadow: 0px 2px 8px rgba(76, 102, 148, 0.15);
+  }
+  
+  .deep-learn-send-button.active:hover {
+    background: #3d5a7a;
+    box-shadow: 0px 2px 8px rgba(76, 102, 148, 0.25);
+  }
+  
+  .deep-learn-send-icon {
+    width: 21px;
+    height: 21px;
+    filter: brightness(0) saturate(100%) invert(54%) sepia(0%) saturate(0%) hue-rotate(251deg) brightness(94%) contrast(92%);
+    transition: filter 0.2s ease;
+  }
+  
+  .deep-learn-send-button.active .deep-learn-send-icon {
+    filter: brightness(0) invert(1);
+  }

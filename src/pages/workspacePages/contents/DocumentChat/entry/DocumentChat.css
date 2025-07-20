@@ -1,0 +1,568 @@
+/* DocumentChat Entry Page Styles */
+
+/* Main container styles */
+.document-chat-container {
+  padding: 30px 23px 20px 23px; /* Further reduced left/right padding for wider content */
+  display: flex;
+  flex-direction: column;
+  align-items: center;
+  min-height: 100vh;
+  overflow-y: auto;
+  width: 100%;
+  max-width: 1200px;
+  margin: 0 auto;
+}
+
+/* Header section styles */
+.document-chat-header {
+  display: flex;
+  align-items: center;
+  justify-content: center;
+  margin-bottom: 25px; /* Match DeepLearn's header margin */
+}
+
+.document-chat-header-icon {
+  width: 78px;
+  height: 83px;
+  flex-shrink: 0;
+}
+
+.document-chat-header-text {
+  margin-left: 13px;
+}
+
+.document-chat-title {
+  color: #00276C;
+  font-size: 26px;
+  font-weight: 500;
+  padding-top: 2px;
+}
+
+.document-chat-subtitle {
+  color: #000;
+  font-size: 15px;
+  font-weight: 500;
+}
+
+/* Reference Selection Section */
+.document-chat-reference-section {
+  margin-top: 27px; /* Match DeepLearn's input section margin */
+  width: 100%;
+  max-width: 100%; /* Allow full width responsiveness */
+  display: flex;
+  flex-direction: column;
+  align-items: center;
+  flex-shrink: 0;
+}
+
+.document-chat-boxes-container {
+  display: flex;
+  width: 100%;
+  max-width: 824px; /* Constrain width in full-screen state */
+  gap: 3%; /* Simple percentage-based gap */
+  justify-content: center;
+  align-items: stretch;
+  margin: 0 auto; /* Center the container */
+}
+
+/* Upload Box Styles */
+.document-chat-upload-box {
+  flex: 0 0 32%; /* Maintain original ratio: 265px out of 824px total */
+  min-width: 235px; /* Minimum width to prevent internal layout issues */
+  max-width: 265px; /* Maximum width to prevent it from getting too large */
+  height: 161px;
+  border-radius: 8px;
+  border: 2px dashed #0064A2;
+  background: rgba(226, 238, 252, 0.60);
+  box-shadow: 0px 3px 30px 0px rgba(72, 112, 208, 0.05);
+  display: flex;
+  flex-direction: column;
+  align-items: center;
+  justify-content: center;
+  cursor: pointer;
+  transition: all 0.2s ease;
+}
+
+.document-chat-upload-box.hovered {
+  background: rgba(226, 238, 252, 0.80);
+  box-shadow: 0px 3px 30px 0px rgba(72, 112, 208, 0.10);
+}
+
+.document-chat-upload-icon {
+  width: 47px;
+  height: 45px;
+  margin-bottom: 15px;
+  filter: brightness(0) saturate(100%) invert(32%) sepia(9%) saturate(2096%) hue-rotate(182deg) brightness(93%) contrast(87%);
+}
+
+.document-chat-upload-text-container {
+  width: 90%;
+  max-width: 218px;
+  height: 29px;
+  border-radius: 20px;
+  background-color: #4C6694;
+  display: flex;
+  align-items: center;
+  justify-content: center;
+  gap: 4.7px;
+  padding: 0 12px;
+}
+
+.document-chat-folder-icon {
+  width: 21px;
+  height: 21px;
+}
+
+.document-chat-upload-text {
+  color: #FFF;
+  font-family: "SF Pro", -apple-system, BlinkMacSystemFont, "Segoe UI", Roboto, Helvetica, Arial, sans-serif;
+  font-size: clamp(12px, 1.5vw, 14px); /* Responsive font size */
+  font-weight: 500;
+  line-height: normal;
+  letter-spacing: -0.45px;
+}
+
+/* Selected References Box Styles */
+.document-chat-references-box {
+  flex: 0 0 65%; /* Maintain original ratio: 532px out of 824px total */
+  min-width: 300px; /* Minimum width to ensure usability */
+  max-width: 532px; /* Maximum width to match original design */
+  height: 161px;
+  border-radius: 15px;
+  border: 1.2px solid #E0E0E0;
+  background: white;
+  box-shadow: 0px 1px 15px rgba(111, 111, 111, 0.07);
+  padding: 16px;
+  display: flex;
+  flex-direction: column;
+  position: relative;
+}
+
+.document-chat-references-placeholder {
+  flex: 1;
+  display: flex;
+  align-items: center;
+  justify-content: center;
+}
+
+/* Profile Button Styles */
+.document-chat-profile-button-container {
+  position: absolute;
+  bottom: 13px;
+  right: 102px;
+}
+
+.document-chat-profile-button {
+  width: 33px;
+  height: 33px;
+  border-radius: 50%;
+  background: #fff;
+  border: 1.2px solid #B5B5B5;
+  display: flex;
+  align-items: center;
+  justify-content: center;
+  cursor: pointer;
+  transition: all 0.2s ease;
+}
+
+.document-chat-profile-button:hover {
+  border-color: #4C6694;
+  box-shadow: 0px 2px 8px rgba(76, 102, 148, 0.15);
+}
+
+.document-chat-profile-button.selected {
+  background: #4C6694;
+  border-color: #4C6694;
+  box-shadow: 0px 2px 8px rgba(76, 102, 148, 0.25);
+}
+
+.document-chat-profile-button-icon {
+  width: 21px;
+  height: 21px;
+  transition: filter 0.2s ease;
+}
+
+/* Start Button Styles */
+.document-chat-start-button-container {
+  position: absolute;
+  bottom: 15px;
+  right: 16px;
+}
+
+.document-chat-start-button {
+  width: 74px;
+  height: 29px;
+  border-radius: 20px;
+  background: #4C6694;
+  border: none;
+  display: flex;
+  align-items: center;
+  justify-content: center;
+  gap: 2px;
+  cursor: pointer;
+  transition: all 0.2s ease;
+}
+
+.document-chat-start-button:hover {
+  background: #3d5a7a;
+  box-shadow: 0px 2px 8px rgba(76, 102, 148, 0.25);
+}
+
+.document-chat-start-text {
+  color: #FFF;
+  font-family: "SF Pro", -apple-system, BlinkMacSystemFont, "Segoe UI", Roboto, Helvetica, Arial, sans-serif;
+  font-size: 15px;
+  font-weight: 510;
+  line-height: normal;
+  letter-spacing: -0.45px;
+}
+
+.document-chat-start-icon {
+  width: 20px;
+  height: 20px;
+}
+
+/* Responsive breakpoints for boxes container */
+@media (max-width: 800px) {
+  .document-chat-container {
+    padding: 30px 24px 20px 24px;
+  }
+  .document-chat-boxes-container {
+    flex-direction: column;
+    gap: 2%; /* Simple percentage-based gap for stacked layout */
+    align-items: center;
+    max-width: 100%; /* Allow full width on smaller screens */
+  }
+  
+  .document-chat-upload-box {
+    flex: none;
+    width: 100%;
+    max-width: 100%;
+    min-width: 250px;
+  }
+  
+  .document-chat-references-box {
+    flex: none;
+    width: 100%;
+    max-width: 100%;
+    min-width: 250px;
+  }
+  
+  .document-chat-upload-text-container {
+    max-width: 200px;
+  }
+  
+  .document-chat-search-container {
+    width: 200px;
+  }
+  
+  .document-chat-cards-container {
+    grid-template-columns: repeat(3, 1fr); /* 3 cards per row on medium screens */
+    gap: 20px;
+  }
+}
+
+/* Responsive breakpoint: when cards would be below 220px, switch to 2 per row */
+@media (max-width: 721px) {
+  .document-chat-cards-container {
+    grid-template-columns: repeat(auto-fit, minmax(180px, 1fr)); /* Allow 3 cards with smaller min-width */
+    gap: clamp(15px, 2vw, 20px); /* Responsive gap */
+  }
+  
+  .document-chat-cards-container.split {
+    grid-template-columns: repeat(auto-fit, minmax(140px, 1fr)); /* Smaller min-width for split mode */
+    gap: clamp(12px, 1.5vw, 18px); /* Responsive gap for split mode */
+  }
+}
+
+/* Additional responsive adjustments for very small screens */
+@media (max-width: 480px) {
+  .document-chat-container {
+    padding: 24px 20px;
+  }
+  
+  .document-chat-boxes-container {
+    max-width: 100%;
+    gap: 1.5%; /* Simple percentage-based gap for very small screens */
+  }
+  
+  .document-chat-upload-box {
+    min-width: 200px;
+    max-width: 100%;
+  }
+  
+  .document-chat-references-box {
+    min-width: 200px;
+    max-width: 100%;
+  }
+  
+  .document-chat-upload-text-container {
+    max-width: 180px;
+  }
+  
+  .document-chat-search-container {
+    width: 180px;
+  }
+  
+  .document-chat-history-header {
+    flex-direction: column;
+    gap: 10px;
+    align-items: center;
+  }
+  
+  .document-chat-history-section {
+    max-width: 100%;
+  }
+  
+  .document-chat-cards-container {
+    grid-template-columns: repeat(auto-fit, minmax(160px, 1fr)); /* Allow 3 cards on very small screens */
+    gap: clamp(10px, 1.5vw, 15px); /* Responsive gap for very small screens */
+  }
+  
+  .document-chat-cards-container.split {
+    grid-template-columns: repeat(auto-fit, minmax(120px, 1fr)); /* Smaller min-width for split mode on very small screens */
+    gap: clamp(8px, 1vw, 12px); /* Responsive gap for split mode on very small screens */
+  }
+  
+  .document-chat-card {
+    min-width: auto; /* Remove min-width constraint on very small screens */
+  }
+}
+
+/* History section styles */
+.document-chat-history-section {
+  margin-top: 30px;
+  width: 100%;
+  max-width: 100%; /* Allow full width responsiveness */
+  flex-shrink: 0;
+}
+
+.document-chat-history-header {
+  display: flex;
+  justify-content: space-between;
+  align-items: center;
+  margin-bottom: 15px;
+  width: 100%;
+}
+
+.document-chat-history-title {
+  width: 133px;
+  height: 35px;
+  border-radius: 20px;
+  border: 1.2px solid #4C6694;
+  background-color: white;
+  display: flex;
+  align-items: center;
+  justify-content: center;
+  gap: 8px;
+  color: #4C6694;
+  font-family: -apple-system, BlinkMacSystemFont, "SF Pro", "Segoe UI", Roboto, Helvetica, Arial, sans-serif;
+  font-size: 15px;
+  font-weight: 510;
+  line-height: normal;
+  letter-spacing: -0.48px;
+  transform: scale(1.05);
+}
+
+.document-chat-search-container {
+  display: inline-flex;
+  height: 32px;
+  padding: 4px 12px;
+  align-items: center;
+  gap: 5px;
+  flex-shrink: 0;
+  width: 248px;
+  max-width: 100%;
+  border-radius: 100px;
+  border: 1px solid #B1B1B1;
+  background: #FFF;
+}
+
+.document-chat-search-icon {
+  width: 32px;
+  height: 32px;
+  flex-shrink: 0;
+}
+
+.document-chat-search-input {
+  flex: 1;
+  border: none;
+  outline: none;
+  background: transparent;
+  color: #000;
+  font-family: -apple-system, BlinkMacSystemFont, "SF Pro", "Segoe UI", Roboto, Helvetica, Arial, sans-serif;
+  font-size: 14px;
+  font-weight: 400;
+  line-height: normal;
+}
+
+.document-chat-search-input::placeholder {
+  color: #B1B1B1;
+}
+
+/* History content section styles */
+.document-chat-cards-container {
+  margin-top: 10px;
+  width: 100%;
+  max-width: 100%;
+  display: grid;
+  grid-template-columns: repeat(auto-fit, minmax(220px, 1fr)); /* Original min-width for full screen */
+  gap: clamp(20px, 2.5vw, 30px); /* Responsive gap that scales with viewport width */
+  justify-content: center;
+  margin-left: auto;
+  margin-right: auto;
+}
+
+/* For split screen, show 3 cards per row */
+.document-chat-cards-container.split {
+  grid-template-columns: repeat(auto-fit, minmax(140px, 1fr)); /* Smaller min-width for split screen */
+  gap: 20px;
+  justify-content: center;
+}
+
+.document-chat-card {
+  display: flex;
+  width: 100%;
+  height: 165px;
+  padding: 12px 10px;
+  flex-direction: column;
+  align-items: flex-start;
+  gap: 15px;
+  flex-shrink: 0;
+  border-radius: 12px;
+  border: 1px solid #D9D9D9;
+  background: #FFF;
+  cursor: pointer;
+  transition: transform 0.2s, box-shadow 0.2s;
+}
+
+.document-chat-cards-container.split .document-chat-card {
+  width: 100%;
+  min-width: 155px;
+  max-width: 100%;
+}
+
+.document-chat-card:hover {
+  transform: translateY(-2px);
+  box-shadow: 0 4px 12px rgba(0, 0, 0, 0.1);
+}
+
+.document-chat-card-title {
+  width: 100%;
+  height: 58px;
+  flex-shrink: 0;
+  overflow: hidden;
+  text-overflow: ellipsis;
+  display: -webkit-box;
+  -webkit-line-clamp: 3;
+  -webkit-box-orient: vertical;
+  color: #000;
+  font-family: "SF Pro", -apple-system, BlinkMacSystemFont, "Segoe UI", Roboto, Helvetica, Arial, sans-serif;
+  font-size: 15px;
+  font-weight: 510;
+  line-height: 1.3;
+}
+
+.document-chat-card-detail {
+  display: flex;
+  flex-direction: column;
+  align-items: flex-start;
+  gap: 6px;
+}
+
+.document-chat-file-number {
+  display: inline-flex;
+  padding: 3px 4px;
+  flex-direction: column;
+  justify-content: center;
+  align-items: center;
+  background: hsla(218, 68%, 90%, 1);
+  color: #23427A;
+  font-family: "SF Pro", -apple-system, BlinkMacSystemFont, "Segoe UI", Roboto, Helvetica, Arial, sans-serif;
+  font-size: 11px;
+  font-weight: 510;
+  line-height: normal;
+  border-radius: 4px;
+}
+
+.document-chat-file-info {
+  display: flex;
+  align-items: center;
+  gap: 3px;
+  width: 100%;
+  min-width: 0;
+  overflow: hidden;
+}
+
+.document-chat-file-name-box {
+  display: flex;
+  height: 19px;
+  padding: 2px 4px 2px 3px;
+  align-items: center;
+  gap: 1px;
+  flex: 1;
+  min-width: 60px;
+  max-width: 129px;
+  background: hsla(210, 36%, 95%, 1);
+  border-radius: 4px;
+  overflow: hidden;
+}
+
+.document-chat-file-name {
+  color: #23427A;
+  font-family: "Inter", -apple-system, BlinkMacSystemFont, "Segoe UI", Roboto, Helvetica, Arial, sans-serif;
+  font-size: 11px;
+  font-weight: 400;
+  line-height: normal;
+  overflow: hidden;
+  text-overflow: ellipsis;
+  white-space: nowrap;
+  flex: 1;
+  min-width: 0;
+}
+
+.document-chat-more-files {
+  color: #23427A;
+  font-family: "Inter", -apple-system, BlinkMacSystemFont, "Segoe UI", Roboto, Helvetica, Arial, sans-serif;
+  font-size: 11px;
+  font-weight: 400;
+  line-height: normal;
+  flex-shrink: 0;
+  white-space: nowrap;
+}
+
+.document-chat-file-icon {
+  width: 15px;
+  height: 15px;
+  flex-shrink: 0;
+}
+
+.document-chat-card-date {
+  display: flex;
+  align-items: center;
+}
+
+.document-chat-card-date-icon {
+  width: 15px;
+  height: 15px;
+}
+
+.document-chat-card-date-text {
+  margin-left: 4px;
+  color: #515151;
+  font-family: "SF Pro", -apple-system, BlinkMacSystemFont, "Segoe UI", Roboto, Helvetica, Arial, sans-serif;
+  font-size: 11px;
+  font-weight: 510;
+  line-height: normal;
+}
+
+
+
+.document-chat-cards-container.split .document-chat-file-name-box {
+  min-width: 50px;
+  max-width: 100px;
+}
+
+.document-chat-cards-container.split .document-chat-file-name {
+  font-size: 10px;
+}
