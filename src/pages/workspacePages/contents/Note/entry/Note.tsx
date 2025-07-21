@@ -1,5 +1,5 @@
 import React, { useState } from 'react';
-import { MoreHorizontalIcon, UploadIcon, FolderPlusIcon, PlusIcon, ClockIcon, FileTextIcon, SearchIcon } from 'lucide-react';
+import { MoreVerticalIcon, UploadIcon, FolderPlusIcon, PlusIcon, ClockIcon, FileTextIcon, SearchIcon } from 'lucide-react';
 import { useTabContext } from '../../../workspaceFrame/TabContext';
 import './Note.css';
 
@@ -76,15 +76,17 @@ function Note({ onBack, onViewChange, tabIdx = 0, pageIdx = 0, screenId = '' }: 
     },
     {
       id: '7',
-      name: 'Lecture 1',
-      type: 'folder',
-      fileCount: 8
+      name: 'Lecture Notes',
+      type: 'file',
+      fileType: 'docx',
+      size: '2.1MB'
     },
     {
       id: '8',
-      name: 'Lecture 2',
-      type: 'folder',
-      fileCount: 4
+      name: 'Study Guide',
+      type: 'file',
+      fileType: 'docx',
+      size: '1.5MB'
     }
   ];
 
@@ -118,52 +120,54 @@ function Note({ onBack, onViewChange, tabIdx = 0, pageIdx = 0, screenId = '' }: 
   return (
     <div className="note-container">
       <div className="note-content">
-        {/* Header with note icon and titles */}
-        <div className="smart-note-header">
+        {/* Header Section */}
+        <div className="note-header">
           <img
             src="/workspace/note/note_icon.svg"
             alt="Smart Note"
-            className="note-icon"
+            className="note-header-icon"
           />
-          <div className="header-text">
-            <h1 className="smart-note-title">Smart Note</h1>
-            <p className="smart-note-subtitle">Next generation of Note-taking</p>
+          <div className="note-header-text">
+            <h1 className="note-title">Smart Note</h1>
+            <p className="note-subtitle">Next generation of Note-taking</p>
           </div>
         </div>
 
-        {/* Action Buttons */}
-        <div className="action-buttons">
-          <button className="action-button" onClick={handleCreateNote}>
-            <PlusIcon className="action-button-icon" />
-            <span className="action-button-text">Create Note</span>
+        {/* File Management Section */}
+        <div className="file-management-section">
+          <button className="file-management-button" onClick={handleCreateNote}>
+            <PlusIcon className="file-management-icon" />
+            <span className="file-management-text">Create</span>
           </button>
-          <button className="action-button" onClick={handleUpload}>
-            <UploadIcon className="action-button-icon" />
-            <span className="action-button-text">Upload</span>
+          <button className="file-management-button" onClick={handleUpload}>
+            <UploadIcon className="file-management-icon" />
+            <span className="file-management-text">Upload</span>
           </button>
-          <button className="action-button" onClick={handleImport}>
-            <FolderPlusIcon className="action-button-icon" />
-            <span className="action-button-text">Import</span>
+          <button className="file-management-button" onClick={handleImport}>
+            <FolderPlusIcon className="file-management-icon" />
+            <span className="file-management-text">Import</span>
           </button>
         </div>
 
-        {/* Filter buttons and Search */}
-        <div className="filter-search-section">
-          <div className="filter-buttons">
-            <button 
-              className={`filter-button ${activeFilter === 'recent' ? 'active' : ''}`}
-              onClick={() => setActiveFilter('recent')}
-            >
-              <ClockIcon size={16} />
-              Recent
-            </button>
-            <button 
-              className={`filter-button ${activeFilter === 'all' ? 'active' : ''}`}
-              onClick={() => setActiveFilter('all')}
-            >
-              <FileTextIcon size={16} />
-              All Notes
-            </button>
+        {/* Note Files Section Header */}
+        <div className="note-files-header">
+          <div className="note-files-left">
+            <div className="filter-buttons">
+              <button 
+                className={`filter-button ${activeFilter === 'recent' ? 'active' : ''}`}
+                onClick={() => setActiveFilter('recent')}
+              >
+                <ClockIcon size={16} />
+                Recent
+              </button>
+              <button 
+                className={`filter-button ${activeFilter === 'all' ? 'active' : ''}`}
+                onClick={() => setActiveFilter('all')}
+              >
+                <FileTextIcon size={16} />
+                All Notes
+              </button>
+            </div>
           </div>
           
           <div className="search-container">
@@ -178,34 +182,34 @@ function Note({ onBack, onViewChange, tabIdx = 0, pageIdx = 0, screenId = '' }: 
           </div>
         </div>
 
-        {/* Files Grid */}
-        <div className={`files-grid ${isSplit ? 'split' : ''}`}>
+        {/* Note Files Grid */}
+        <div className={`note-files-grid ${isSplit ? 'split' : ''}`}>
           {filteredItems.map((item) => (
             <div
               key={item.id}
-              className="file-item"
+              className="note-file-card"
               onClick={() => handleItemClick(item)}
             >
               <img
-                src={item.type === 'folder' ? '/workspace/note/folder.svg' : '/workspace/note/document.svg'}
-                alt={item.type}
-                className="file-icon"
+                src="/workspace/note/document.svg"
+                alt="document"
+                className="note-file-icon"
               />
-              <button className="file-menu-button" onClick={(e) => e.stopPropagation()}>
-                <MoreHorizontalIcon size={16} />
+              <button className="note-file-menu-button" onClick={(e) => e.stopPropagation()}>
+                <MoreVerticalIcon size={16} />
               </button>
-              <div className={`file-name ${item.name.length <= 15 ? 'single-line' : ''}`}>{item.name}</div>
-              {item.type === 'folder' ? (
-                <>
-                  <div className="file-type folder">Folder</div>
-                  <div className="file-info">{item.fileCount} Files</div>
-                </>
-              ) : (
-                <>
-                  <div className="file-type">{item.fileType}</div>
-                  <div className="file-info">{item.size}</div>
-                </>
-              )}
+              
+              <div className="note-file-info">
+                <div className="note-file-title">{item.name}</div>
+                <div className="note-file-right">
+                  <div className="note-file-tag">
+                    {item.fileType}
+                  </div>
+                  <div className="note-file-size">
+                    {item.size}
+                  </div>
+                </div>
+              </div>
             </div>
           ))}
         </div>

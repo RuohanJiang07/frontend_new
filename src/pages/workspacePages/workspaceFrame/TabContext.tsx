@@ -310,13 +310,15 @@ export const TabProvider = ({ children }: { children: ReactNode }) => {
             if (idx !== pageIdx) return page;
             
             const currentScreens = page.screenQueue;
-            // const screenToRemove = currentScreens.find(screen => screen.id === screenId);
             const remainingScreens = currentScreens.filter(screen => screen.id !== screenId);
             
             // If we're closing the active screen, switch to the first remaining screen
             if (activeScreenId === screenId && remainingScreens.length > 0) {
-                setActiveScreenId(remainingScreens[0].id);
-                setActiveTabIndex(remainingScreens[0].id, 0);
+                const targetScreenId = remainingScreens[0].id;
+                setActiveScreenId(targetScreenId);
+                // Preserve the current active tab index for the target screen
+                const currentActiveTabIndex = activeTabIndices[pageIdx]?.[targetScreenId] || 0;
+                setActiveTabIndex(targetScreenId, currentActiveTabIndex);
             }
             
             // Clean up active tab indices for the closed screen
