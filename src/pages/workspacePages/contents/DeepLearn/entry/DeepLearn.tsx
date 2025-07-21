@@ -231,7 +231,7 @@ function DeepLearn({ isSplit = false, onBack, onViewChange, tabIdx = 0, pageIdx 
                 className="mode-toggle-icon"
                 style={{ filter: selectedMode === 'quick-search' ? 'brightness(0) invert(1)' : 'brightness(0) saturate(100%) invert(32%) sepia(9%) saturate(2096%) hue-rotate(182deg) brightness(93%) contrast(87%)' }}
               />
-              <span className="deep-learn-tab-button-text">My History</span>
+              <span className="font-['SF_Pro',sans-serif] text-[15px]">Quick Search</span>
             </div>
           </div>
           
