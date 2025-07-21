@@ -23,7 +23,11 @@ interface ConversationMessage {
 }
 
 function ProblemHelpResponse({ onBack, tabIdx = 0, pageIdx = 0, screenId = '' }: ProblemHelpResponseProps) {
-  const { switchToProblemHelp } = useTabContext();
+  const { switchToProblemHelp, getActiveScreens, activePage } = useTabContext();
+  
+  // Detect if we're in split screen mode
+  const activeScreens = getActiveScreens(activePage);
+  const isInSplitMode = activeScreens.length > 1 && !activeScreens.some(screen => screen.state === 'full-screen');
   const [followUpQuestion, setFollowUpQuestion] = useState('');
   const [isInputFocused, setIsInputFocused] = useState(false);
   const [profileSelected, setProfileSelected] = useState(false);
@@ -276,47 +280,49 @@ If μ_s = 0.3 and μ_k = 0.2:
           </div>
         </div>
 
-        {/* Right-aligned elements */}
-        <div className="problem-help-response-header-right">
-          {/* Share Icon */}
-          <button
-            className="problem-help-response-action-button"
-            aria-label="Share conversation"
-          >
-            <img
-              src="/workspace/share.svg"
-              alt="Share"
-              className="problem-help-response-action-icon"
-            />
-          </button>
+        {/* Right-aligned elements - Only show in full screen mode */}
+        {!isInSplitMode && (
+          <div className="problem-help-response-header-right">
+            {/* Share Icon */}
+            <button
+              className="problem-help-response-action-button"
+              aria-label="Share conversation"
+            >
+              <img
+                src="/workspace/share.svg"
+                alt="Share"
+                className="problem-help-response-action-icon"
+              />
+            </button>
 
-          {/* Print Icon */}
-          <button
-            className="problem-help-response-action-button"
-            aria-label="Print conversation"
-          >
-            <img
-              src="/workspace/print.svg"
-              alt="Print"
-              className="problem-help-response-action-icon"
-            />
-          </button>
+            {/* Print Icon */}
+            <button
+              className="problem-help-response-action-button"
+              aria-label="Print conversation"
+            >
+              <img
+                src="/workspace/print.svg"
+                alt="Print"
+                className="problem-help-response-action-icon"
+              />
+            </button>
 
-          {/* Publish to Community Button */}
-          <button
-            className="problem-help-response-publish-button"
-            aria-label="Publish to community"
-          >
-            <img
-              src="/workspace/publish.svg"
-              alt="Publish"
-              className="problem-help-response-publish-icon"
-            />
-            <span className="problem-help-response-publish-text">
-              Publish to Community
-            </span>
-          </button>
-        </div>
+            {/* Publish to Community Button */}
+            <button
+              className="problem-help-response-publish-button"
+              aria-label="Publish to community"
+            >
+              <img
+                src="/workspace/publish.svg"
+                alt="Publish"
+                className="problem-help-response-publish-icon"
+              />
+              <span className="problem-help-response-publish-text">
+                Publish to Community
+              </span>
+            </button>
+          </div>
+        )}
       </header>
 
       {/* Main Content Section */}

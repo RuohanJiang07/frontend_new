@@ -16,6 +16,7 @@
   height: 53px;
   width: 100%;
   padding: 0 10px;
+  position: relative;
 }
 
 .problem-help-response-header-left {
@@ -74,6 +75,9 @@
   display: flex;
   align-items: center;
   gap: 14px;
+  position: absolute;
+  top: 3px;
+  right: 84px;
 }
 
 /* Header action buttons (share, print) */
@@ -251,7 +255,7 @@
 .problem-help-response-conversation-group {
   display: flex;
   flex-direction: column;
-  margin-bottom: 34px; /* 组间 gap: between groups */
+  margin-bottom: 15px; /* Reduced from 34px to 12px for tighter group spacing */
 }
 
 .problem-help-response-question {
@@ -260,7 +264,7 @@
   align-items: flex-end;
   gap: 8px;
   width: 100%;
-  max-width: 957px;
+  max-width: 980px;
 }
 
 .problem-help-response-question-date {
@@ -299,10 +303,10 @@
 .problem-help-response-answer {
   display: flex;
   flex-direction: column;
-  gap: 8px;
+  gap: 3px; /* Reduced from 8px to 3px for tighter answer section */
   align-self: stretch;
   width: 100%;
-  margin-top: 10px; /* 组内 gap: between question box and answer section within the same group */
+  margin-top: 2px; /* Reduced from 5px to 2px for less space between user and answer */
 }
 
 .problem-help-response-answer-header {
@@ -592,16 +596,16 @@
   align-items: flex-start; /* Ensure top alignment */
 }
 
-/* Main response and concepts widths as % of conversation-main frame (666/970.2, 229/970.2) */
-/* conversation-main is 99% of main frame (980px * 0.99 = 970.2px) */
+/* Main response and concepts widths - adaptive to user message width */
 .problem-help-response-solution {
-  width: 68.64%; /* 666/970.2 */
+  width: calc(100% - 250px); /* Adaptive width: total width minus concepts width */
   min-width: 0;
+  max-width: 957px; /* Match user message max-width */
 }
 
 .problem-help-response-concepts {
-  width: 23.60%; /* 229/970.2 */
-  min-width: 0;
+  width: 229px; /* Fixed width for concepts */
+  min-width: 229px;
   display: flex;
   flex-direction: column;
   gap: 16px;
@@ -609,11 +613,12 @@
 
 /* 15px gap below answer content */
 .problem-help-response-answer-content + .problem-help-response-actions {
-  margin-top: 15px;
+  margin-top: 5px; /* Reduced from 15px to 5px for less space between answer and actions */
 }
 
 .problem-help-response-actions {
-  width: 92.35%; /* 896/970.2, right-aligned with answer content */
+  width: calc(100% - 250px); /* Adaptive width: match solution width */
+  max-width: 957px; /* Match user message max-width */
   display: flex;
   justify-content: flex-end;
   align-items: center;
@@ -638,9 +643,11 @@
   }
   .problem-help-response-solution {
     width: 100%;
+    max-width: 100%;
   }
   .problem-help-response-concepts {
     width: 100%;
+    min-width: 100%;
     margin-top: 16px;
   }
   .problem-help-response-answer-content {
