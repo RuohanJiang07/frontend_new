@@ -1,6 +1,6 @@
 import { createContext, useContext, useState, ReactNode } from 'react';
 
-import AiPoweredTools from '@/pages/workspacePages/contents/default/tabPanel/AiPoweredTools';
+import AiPoweredTools from '@/pages/workspacePages/contents/default/AiPoweredTools';
 import DeepLearnEntry from '@/pages/workspacePages/contents/DeepLearn/entry/DeepLearn';
 import DocumentChatEntry from '@/pages/workspacePages/contents/DocumentChat/entry/DocumentChat';
 import DocumentChatResponse from '@/pages/workspacePages/contents/DocumentChat/response/DocumentChatResponse';

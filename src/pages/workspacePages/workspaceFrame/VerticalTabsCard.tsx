@@ -1,7 +1,7 @@
 import React, { useState } from 'react';
 import { Expand, Maximize, PlusIcon, X } from 'lucide-react';
 import { useTabContext, TabContextItem } from './TabContext';
-import AiPoweredTools from '../contents/default/tabPanel/AiPoweredTools';
+import AiPoweredTools from '../contents/default/AiPoweredTools';
 
 interface VerticalTabsCardProps {
     data: TabContextItem[];
