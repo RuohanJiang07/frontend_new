@@ -5,6 +5,7 @@ import DeepLearnEntry from '@/pages/workspacePages/contents/DeepLearn/entry/Deep
 import DocumentChatEntry from '@/pages/workspacePages/contents/DocumentChat/entry/DocumentChat';
 import DocumentChatResponse from '@/pages/workspacePages/contents/DocumentChat/response/DocumentChatResponse';
 import ProblemHelpEntry from '@/pages/workspacePages/contents/ProblemHelp/entry/ProblemHelp';
+import ProblemHelpResponse from '@/pages/workspacePages/contents/ProblemHelp/response/ProblemHelpResponse';
 import NoteEntry from '@/pages/workspacePages/contents/Note/entry/Note';
 
 // New screen object interface
@@ -58,6 +59,8 @@ interface TabContextType {
     switchToDocumentChatResponse: (pageIdx: number, screenId: string, tabIdx: number) => void;
     // New method to switch to ProblemHelp
     switchToProblemHelp: (pageIdx: number, screenId: string, tabIdx: number) => void;
+    // New method to switch to ProblemHelpResponse
+    switchToProblemHelpResponse: (pageIdx: number, screenId: string, tabIdx: number) => void;
     // New method to switch to Note
     switchToNote: (pageIdx: number, screenId: string, tabIdx: number) => void;
     
@@ -88,6 +91,7 @@ const TabContext = createContext<TabContextType>({
     switchToDocumentChat: () => { },
     switchToDocumentChatResponse: () => { },
     switchToProblemHelp: () => { },
+    switchToProblemHelpResponse: () => { },
     switchToNote: () => { },
     canClosePage: () => false,
     canCloseTab: () => false,
@@ -494,6 +498,25 @@ export const TabProvider = ({ children }: { children: ReactNode }) => {
         }));
     };
 
+    // New method to switch to ProblemHelpResponse
+    const switchToProblemHelpResponse = (pageIdx: number, screenId: string, tabIdx: number) => {
+        setPages(prev => prev.map((page, idx) => {
+            if (idx !== pageIdx) return page;
+            return {
+                ...page,
+                screenQueue: page.screenQueue.map(screen => {
+                    if (screen.id !== screenId) return screen;
+                    const newTabList = screen.tabList.map((tab, i) =>
+                        i === tabIdx
+                            ? { ...tab, tab: "Problem Help Response", components: <ProblemHelpResponse onBack={() => {}} /> }
+                            : tab
+                    );
+                    return { ...screen, tabList: newTabList };
+                })
+            };
+        }));
+    };
+
     // New method to switch to Note
     const switchToNote = (pageIdx: number, screenId: string, tabIdx: number) => {
         setPages(prev => prev.map((page, idx) => {
@@ -575,6 +598,7 @@ export const TabProvider = ({ children }: { children: ReactNode }) => {
                 switchToDocumentChat,
                 switchToDocumentChatResponse,
                 switchToProblemHelp,
+                switchToProblemHelpResponse,
                 switchToNote,
                 canClosePage,
                 canCloseTab,

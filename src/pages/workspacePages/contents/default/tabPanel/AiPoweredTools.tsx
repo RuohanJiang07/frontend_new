@@ -13,7 +13,7 @@ const aiTools = [
     },
     {
         title: "Document Chat",
-        desc: "We explain long-heavy documents for you",
+        desc: "We explain long-heavy documents",
         tag: "AI-Chatbots",
         icon: "/workspace/default/document-chat.svg",
         beta: true,
@@ -62,7 +62,7 @@ const AiPoweredTools: React.FC<AiPoweredToolsProps> = ({ tabIdx = 0, pageIdx = 0
     };
 
     return (
-        <div className="max-w-full flex flex-col items-center pt-10">
+        <div className="max-w-full flex flex-col items-center pt-20">
             <div>
                 {/* AI-Powered Tools */}
                 <div className="max-w-full  ">
@@ -75,7 +75,7 @@ const AiPoweredTools: React.FC<AiPoweredToolsProps> = ({ tabIdx = 0, pageIdx = 0
                         {aiTools.map((tool, idx) => (
                             <div
                                 key={tool.title}
-                                className={`flex flex-col items-start w-[9.5rem] h-[131px] bg-[#F8F8F8] rounded-[14px] shadow-[0_3px_13px_0_rgba(0,0,0,0.07)] border border-[#ececec] px-3 py-4 relative ${
+                                className={`flex flex-col items-start w-[138px] h-[131px] bg-[#F8F8F8] rounded-[14px] shadow-[0_3px_13px_0_rgba(0,0,0,0.07)] border border-[#ececec] px-3 py-4 relative ${
                                     tool.title === "Deep Learn" || tool.title === "Document Chat" || tool.title === "Problem Help" || tool.title === "Smart Note" ? "cursor-pointer hover:shadow-[0_5px_16px_0_rgba(0,0,0,0.1)] transition-shadow duration-200" : ""
                                 }`}
                                 onClick={
@@ -94,7 +94,7 @@ const AiPoweredTools: React.FC<AiPoweredToolsProps> = ({ tabIdx = 0, pageIdx = 0
                                 </div>
                                 <div className="text-[#6B6B6B] text-[10px] leading-tight">{tool.desc}
                                     {tool.beta && (
-                                        <span className="ml-2 px-1 py-0.5 bg-[#909FBB] text-[5px] rounded text-[#FFFFFF] font-medium">Learn more</span>
+                                        <span className="ml-1 px-1 py-0.5 bg-[#909FBB] text-[5px] rounded text-[#FFFFFF] font-medium">Learn more</span>
                                     )}
                                 </div>
                             </div>

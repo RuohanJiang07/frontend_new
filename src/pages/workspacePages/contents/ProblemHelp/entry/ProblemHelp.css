@@ -180,6 +180,7 @@
   right: 13px;
   display: flex;
   gap: 7px;
+  align-items: center;
 }
 
 .problem-help-button {
@@ -211,6 +212,54 @@
 }
 
 .problem-help-button.selected .problem-help-button-icon {
+  filter: brightness(0) invert(1);
+}
+
+/* Separator line styles */
+.problem-help-button-separator {
+  width: 1px;
+  height: 20px;
+  background: #E0E0E0;
+  margin: 0 2px;
+}
+
+/* Send button styles */
+.problem-help-send-button {
+  width: 33px;
+  height: 33px;
+  border-radius: 50%;
+  background: #fff;
+  border: 1.2px solid #B5B5B5;
+  display: flex;
+  align-items: center;
+  justify-content: center;
+  cursor: pointer;
+  transition: all 0.2s ease;
+  opacity: 0.5;
+}
+
+.problem-help-send-button.active {
+  background: #4C6694;
+  border-color: #4C6694;
+  opacity: 1;
+}
+
+.problem-help-send-button:hover {
+  border-color: #4C6694;
+}
+
+.problem-help-send-button.active:hover {
+  background: #5a7bc0;
+}
+
+.problem-help-send-icon {
+  width: 16px;
+  height: 16px;
+  filter: brightness(0) saturate(100%) invert(39%) sepia(0%) saturate(0%) hue-rotate(147deg) brightness(94%) contrast(87%);
+  transition: filter 0.2s ease;
+}
+
+.problem-help-send-button.active .problem-help-send-icon {
   filter: brightness(0) invert(1);
 }
 

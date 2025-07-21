@@ -5,6 +5,7 @@
   width: 100%;
   height: calc(100vh - 180px); /* Match the workspace shell height constraint */
   background-color: #ffffff;
+  padding-bottom: 25px; /* Add bottom padding to give more space */
 }
 
 /* Header Section */
@@ -14,7 +15,7 @@
   justify-content: space-between;
   height: 53px;
   width: 100%;
-  padding: 0 16px;
+  padding: 0 10px;
 }
 
 .problem-help-response-header-left {
@@ -136,10 +137,11 @@
   display: flex;
   align-items: center;
   height: 28px;
-  padding: 5px 12px;
+  padding: 5px 10px;
+  min-width: 180px; /* Minimum width to preserve text layout */
   background: #4C6694;
   border-radius: 6px;
-  gap: 10px;
+  gap: 6px;
   border: none;
   cursor: pointer;
   transition: all 0.2s ease-in-out;
@@ -147,20 +149,21 @@
 
 .problem-help-response-publish-button:hover {
   background: #3d5a7a;
-  box-shadow: 0px 2px 8px rgba(76, 102, 148, 0.25);
 }
 
 .problem-help-response-publish-icon {
-  width: 19px;
-  height: 17px;
+  width: 16px;
+  height: 16px;
+  filter: brightness(0) invert(1);
 }
 
 .problem-help-response-publish-text {
-  color: #FFF;
+  color: #ffffff;
   font-family: -apple-system, BlinkMacSystemFont, "SF Pro", "Segoe UI", Roboto, Helvetica, Arial, sans-serif;
   font-size: 13px;
-  font-weight: 400;
+  font-weight: 510;
   line-height: normal;
+  white-space: nowrap;
 }
 
 /* Main Content Section */
@@ -169,34 +172,21 @@
   justify-content: center;
   width: 100%;
   height: 100%;
-}
-
-.problem-help-response-content {
-  width: 100%;
-  max-width: 1131px;
-  display: flex;
-  gap: 32px;
-  height: 100%;
+  padding-bottom: 25px;
 }
 
 /* Conversation Section */
-.problem-help-response-conversation {
-  display: flex;
-  flex-direction: column;
-  flex: 1;
-  height: 100%;
-  position: relative;
-}
-
 .problem-help-response-conversation-main {
-  flex: 1;
-  overflow-y: auto;
-  padding: 0 !important;
-  scrollbar-width: none;
-  -ms-overflow-style: none;
   display: flex;
   flex-direction: column;
-  align-items: center;
+  width: 98%;
+  margin: 0 auto;
+  flex: 1;
+  min-height: 0; /* Allow flex item to shrink */
+  overflow-y: auto; /* Add scroll if content overflows */
+  scrollbar-width: thin;
+  scrollbar-color: rgba(0, 0, 0, 0.2) transparent;
+  padding: 0 !important;
 }
 
 .problem-help-response-conversation-main::-webkit-scrollbar {
@@ -254,14 +244,14 @@
 .problem-help-response-conversation-groups {
   display: flex;
   flex-direction: column;
-  gap: 11px;
+  /* Remove gap: 34px - this was interfering with the Q&A gap control */
   padding-top: 0 !important;
 }
 
 .problem-help-response-conversation-group {
   display: flex;
   flex-direction: column;
-  gap: 11px;
+  margin-bottom: 34px; /* 组间 gap: between groups */
 }
 
 .problem-help-response-question {
@@ -290,7 +280,6 @@
   border-radius: 10px;
   background: #E6EFFB;
   border: none;
-  width: 957px;
   min-height: fit-content;
   height: auto;
   flex-shrink: 0;
@@ -313,7 +302,7 @@
   gap: 8px;
   align-self: stretch;
   width: 100%;
-  max-width: 957px;
+  margin-top: 10px; /* 组内 gap: between question box and answer section within the same group */
 }
 
 .problem-help-response-answer-header {
@@ -368,7 +357,7 @@
   display: flex;
   flex-direction: column;
   gap: 16px;
-  width: 229px;
+  width: 28%; /* Original 229px out of 819px conversation width */
   flex-shrink: 0;
 }
 
@@ -436,9 +425,9 @@
 
 .problem-help-response-input-section {
   width: 100%;
-  max-width: 957px;
+  max-width: 100%; /* Full width of the main frame */
   margin-top: 9px;
-  flex-shrink: 0; /* Prevent input section from shrinking */
+  flex-shrink: 0;
   align-self: center;
 }
 
@@ -548,63 +537,126 @@
   cursor: not-allowed;
 }
 
-/* Responsive Design */
+/* Main frame below header */
+.problem-help-response-main-frame {
+  width: 98%; /* 980px / 1160px (assume white container is 1160px) */
+  max-width: 980px;
+  margin: 0 auto;
+  display: flex;
+  flex-direction: column;
+  height: 100%;
+}
+
+/* Conversation main frame */
+.problem-help-response-conversation-main {
+  width: 99%;
+  margin: 0 auto;
+  flex: 1;
+  min-height: 0;
+  overflow-y: auto;
+  scrollbar-width: thin;
+  scrollbar-color: rgba(0, 0, 0, 0.2) transparent;
+}
+
+.problem-help-response-conversation-main::-webkit-scrollbar {
+  display: none;
+}
+
+.problem-help-response-conversation-main {
+  scrollbar-width: none;
+  -ms-overflow-style: none;
+}
+
+/* Each group */
+/* .problem-help-response-conversation-group {
+  padding-bottom: 34px;
+} */
+
+/* .problem-help-response-answer {
+  width: 100%;
+  display: flex;
+  flex-direction: column;
+} */
+
+/* 4px gap below answer header */
+.problem-help-response-answer-header + .problem-help-response-answer-content {
+  margin-top: 4px;
+}
+
+.problem-help-response-answer-content {
+  width: 100%;
+  display: flex;
+  flex-direction: row;
+  gap: 0;
+  justify-content: space-between;
+  align-items: flex-start; /* Ensure top alignment */
+}
+
+/* Main response and concepts widths as % of conversation-main frame (666/970.2, 229/970.2) */
+/* conversation-main is 99% of main frame (980px * 0.99 = 970.2px) */
+.problem-help-response-solution {
+  width: 68.64%; /* 666/970.2 */
+  min-width: 0;
+}
+
+.problem-help-response-concepts {
+  width: 23.60%; /* 229/970.2 */
+  min-width: 0;
+  display: flex;
+  flex-direction: column;
+  gap: 16px;
+}
+
+/* 15px gap below answer content */
+.problem-help-response-answer-content + .problem-help-response-actions {
+  margin-top: 15px;
+}
+
+.problem-help-response-actions {
+  width: 92.35%; /* 896/970.2, right-aligned with answer content */
+  display: flex;
+  justify-content: flex-end;
+  align-items: center;
+  gap: 8px;
+  align-self: flex-end;
+}
+
+/* Input box section */
+.problem-help-response-input-section {
+  width: 100%;
+  max-width: 100%;
+  margin-top: 9px;
+  flex-shrink: 0;
+  align-self: center;
+}
+
+/* Responsive adjustments */
 @media (max-width: 1200px) {
-  .problem-help-response-content {
-    max-width: 100%;
-    padding: 0 16px;
+  .problem-help-response-main-frame {
+    width: 98%;
+    max-width: 980px;
   }
-  
-  .problem-help-response-question-box {
+  .problem-help-response-solution {
     width: 100%;
-    max-width: 957px;
   }
-  
+  .problem-help-response-concepts {
+    width: 100%;
+    margin-top: 16px;
+  }
   .problem-help-response-answer-content {
     flex-direction: column;
   }
-  
-  .problem-help-response-concepts {
-    width: 100%;
-    max-width: 957px;
-  }
-  
-  .problem-help-response-concept-box {
+  .problem-help-response-actions {
     width: 100%;
   }
-  
-  .problem-help-response-concept-header {
+}
+@media (max-width: 768px) {
+  .problem-help-response-main-frame {
     width: 100%;
-  }
-  
-  .problem-help-response-concept-body {
-    width: 100%;
+    max-width: 100vw;
+    padding: 0 8px;
   }
 }
 
-@media (max-width: 768px) {
-  .problem-help-response-header {
-    padding: 0 12px;
-  }
-  
-  .problem-help-response-title {
-    font-size: 16px;
-  }
-  
-  .problem-help-response-content {
-    padding: 0 12px;
-  }
-  
-  .problem-help-response-conversation-main {
-    padding: 0 12px 0 12px;
-  }
-  
-  .problem-help-response-conversation-groups {
-    padding-top: 0 !important;
-  }
-  
-  .problem-help-response-question-box {
-    width: 100%;
-    min-height: 100px;
-  }
-}
+
+

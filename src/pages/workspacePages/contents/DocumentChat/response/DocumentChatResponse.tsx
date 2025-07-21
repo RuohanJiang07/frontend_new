@@ -18,11 +18,15 @@ interface FileItem {
 }
 
 const DocumentChatResponse: React.FC<DocumentChatResponseProps> = ({ isSplit = false, onBack, tabIdx = 0, pageIdx = 0, screenId = '' }) => {
-  const { switchToDocumentChat } = useTabContext();
+  const { switchToDocumentChat, getActiveScreens, activePage } = useTabContext();
   const conversationMainRef = useRef<HTMLDivElement>(null);
   const scrollbarThumbRef = useRef<HTMLDivElement>(null);
   const [isScrolling, setIsScrolling] = useState(false);
   const [isReferenceListCollapsed, setIsReferenceListCollapsed] = useState(false);
+
+  // Detect if we're in split screen mode
+  const activeScreens = getActiveScreens(activePage);
+  const isInSplitMode = activeScreens.length > 1 && !activeScreens.some(screen => screen.state === 'full-screen');
 
   // File selection state
   const [files, setFiles] = useState<FileItem[]>([
@@ -220,47 +224,49 @@ const DocumentChatResponse: React.FC<DocumentChatResponseProps> = ({ isSplit = f
           </div>
         </div>
 
-        {/* Right-aligned elements */}
-        <div className="document-chat-response-header-right">
-          {/* Share Icon */}
-          <button
-            className="document-chat-response-action-button"
-            aria-label="Share conversation"
-          >
-            <img
-              src="/workspace/share.svg"
-              alt="Share"
-              className="document-chat-response-action-icon"
-            />
-          </button>
+        {/* Right-aligned elements - Only show in full screen mode */}
+        {!isInSplitMode && (
+          <div className="document-chat-response-header-right">
+            {/* Share Icon */}
+            <button
+              className="document-chat-response-action-button"
+              aria-label="Share conversation"
+            >
+              <img
+                src="/workspace/share.svg"
+                alt="Share"
+                className="document-chat-response-action-icon"
+              />
+            </button>
 
-          {/* Print Icon */}
-          <button
-            className="document-chat-response-action-button"
-            aria-label="Print conversation"
-          >
-            <img
-              src="/workspace/print.svg"
-              alt="Print"
-              className="document-chat-response-action-icon"
-            />
-          </button>
+            {/* Print Icon */}
+            <button
+              className="document-chat-response-action-button"
+              aria-label="Print conversation"
+            >
+              <img
+                src="/workspace/print.svg"
+                alt="Print"
+                className="document-chat-response-action-icon"
+              />
+            </button>
 
-          {/* Publish to Community Button */}
-          <button
-            className="document-chat-response-publish-button"
-            aria-label="Publish to community"
-          >
-            <img
-              src="/workspace/publish.svg"
-              alt="Publish"
-              className="document-chat-response-publish-icon"
-            />
-            <span className="document-chat-response-publish-text">
-              Publish to Community
-            </span>
-          </button>
-        </div>
+            {/* Publish to Community Button */}
+            <button
+              className="document-chat-response-publish-button"
+              aria-label="Publish to community"
+            >
+              <img
+                src="/workspace/publish.svg"
+                alt="Publish"
+                className="document-chat-response-publish-icon"
+              />
+              <span className="document-chat-response-publish-text">
+                Publish to Community
+              </span>
+            </button>
+          </div>
+        )}
       </header>
 
       {/* Main Content Section */}
@@ -268,6 +274,22 @@ const DocumentChatResponse: React.FC<DocumentChatResponseProps> = ({ isSplit = f
         <div className="document-chat-response-content">
           {/* File List Section */}
           <div className={`document-chat-response-file-list ${isReferenceListCollapsed ? 'collapsed' : ''}`}>
+            {/* Sidebar Toggle Icon */}
+            <div 
+              className="document-chat-response-sidebar-toggle"
+              onClick={handleToggleReferenceList}
+              aria-label={isReferenceListCollapsed ? "Expand reference list" : "Collapse reference list"}
+              title={isReferenceListCollapsed ? "Show References" : "Hide References"}
+            >
+              <img
+                src={isReferenceListCollapsed 
+                  ? "/workspace/documentChat/sidebar-unfold.svg" 
+                  : "/workspace/documentChat/sidebar-fold.svg"
+                }
+                alt={isReferenceListCollapsed ? "Unfold sidebar" : "Fold sidebar"}
+              />
+            </div>
+
             <div className="document-chat-response-file-list-content">
               {/* List Header */}
               <div className="document-chat-response-file-list-header">
@@ -319,36 +341,6 @@ const DocumentChatResponse: React.FC<DocumentChatResponseProps> = ({ isSplit = f
               />
               <span className="document-chat-response-add-text">
                 Add New References
-              </span>
-            </button>
-
-            {/* Collapse/Expand Toggle Button */}
-            <button 
-              className="document-chat-response-toggle-button"
-              onClick={handleToggleReferenceList}
-              aria-label={isReferenceListCollapsed ? "Expand reference list" : "Collapse reference list"}
-            >
-              <svg
-                className="document-chat-response-toggle-icon"
-                width="16"
-                height="16"
-                viewBox="0 0 24 24"
-                fill="none"
-                stroke="currentColor"
-                strokeWidth="2"
-                strokeLinecap="round"
-                strokeLinejoin="round"
-              >
-                {isReferenceListCollapsed ? (
-                  /* Chevron right for expand */
-                  <polyline points="9 18 15 12 9 6" />
-                ) : (
-                  /* Chevron left for collapse */
-                  <polyline points="15 18 9 12 15 6" />
-                )}
-              </svg>
-              <span className="document-chat-response-toggle-text">
-                {isReferenceListCollapsed ? "Show References" : "Hide References"}
               </span>
             </button>
           </div>

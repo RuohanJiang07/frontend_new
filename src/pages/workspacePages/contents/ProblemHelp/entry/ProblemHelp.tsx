@@ -82,7 +82,7 @@ interface ProblemHelpProps {
 }
 
 function ProblemHelp({ isSplit = false, onBack, onViewChange, tabIdx = 0, pageIdx = 0, screenId = '' }: ProblemHelpProps) {
-  const { switchToProblemHelp } = useTabContext();
+  const { switchToProblemHelp, switchToProblemHelpResponse } = useTabContext();
   const [inputValue, setInputValue] = useState('');
   const [isInputFocused, setIsInputFocused] = useState(false);
   const [profileSelected, setProfileSelected] = useState(false);
@@ -119,7 +119,7 @@ function ProblemHelp({ isSplit = false, onBack, onViewChange, tabIdx = 0, pageId
     localStorage.setItem(`problemhelp_conversation_${tabId}`, `history-${historyItem.id}`);
     
     // Navigate to the response page
-    switchToProblemHelp(pageIdx, screenId, tabIdx);
+    switchToProblemHelpResponse(pageIdx, screenId, tabIdx);
   };
 
   // Filter history based on search query
@@ -127,6 +127,35 @@ function ProblemHelp({ isSplit = false, onBack, onViewChange, tabIdx = 0, pageId
     item.title.toLowerCase().includes(searchQuery.toLowerCase()) ||
     item.type.toLowerCase().includes(searchQuery.toLowerCase())
   );
+
+  // Handle sending a new query
+  const handleSendQuery = () => {
+    if (!inputValue.trim()) return;
+    const tabId = window.location.pathname + window.location.search;
+    // Store the query in localStorage for the response page to load
+    localStorage.setItem(`problemhelp_history_data_${tabId}`,
+      JSON.stringify([
+        {
+          id: 'new',
+          user_query: inputValue,
+          llm_response: '',
+          time: new Date().toISOString(),
+          conversation_id: `new-${Date.now()}`
+        }
+      ])
+    );
+    localStorage.setItem(`problemhelp_history_loaded_${tabId}`, 'true');
+    localStorage.setItem(`problemhelp_conversation_${tabId}`, `new-${Date.now()}`);
+    // Navigate to the response page
+    switchToProblemHelpResponse(pageIdx, screenId, tabIdx);
+  };
+
+  const handleInputKeyDown = (e: React.KeyboardEvent<HTMLTextAreaElement>) => {
+    if (e.key === 'Enter' && !e.shiftKey) {
+      e.preventDefault();
+      handleSendQuery();
+    }
+  };
 
   return (
     <div className="problem-help-container">
@@ -173,6 +202,7 @@ function ProblemHelp({ isSplit = false, onBack, onViewChange, tabIdx = 0, pageId
             onChange={(e) => setInputValue(e.target.value)}
             onFocus={() => setIsInputFocused(true)}
             onBlur={() => setIsInputFocused(false)}
+            onKeyDown={handleInputKeyDown}
           />
 
           {/* Model Selection Dropdown */}
@@ -213,6 +243,23 @@ function ProblemHelp({ isSplit = false, onBack, onViewChange, tabIdx = 0, pageId
                 alt="Profile" 
                 className="problem-help-button-icon"
                 style={{ filter: profileSelected ? 'brightness(0) invert(1)' : 'brightness(0) saturate(100%) invert(39%) sepia(0%) saturate(0%) hue-rotate(147deg) brightness(94%) contrast(87%)' }}
+              />
+            </button>
+
+            {/* Separator Line */}
+            <div className="problem-help-button-separator"></div>
+
+            {/* Send Button */}
+            <button 
+              className={`problem-help-send-button ${inputValue.trim() ? 'active' : ''}`}
+              onClick={handleSendQuery}
+              disabled={!inputValue.trim()}
+              title="Send Query" 
+            >
+              <img 
+                src="/workspace/arrow-up.svg" 
+                alt="Send" 
+                className="problem-help-send-icon"
               />
             </button>
           </div>
