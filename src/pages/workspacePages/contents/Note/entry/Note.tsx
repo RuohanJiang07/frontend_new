@@ -21,7 +21,7 @@ interface NoteProps {
 }
 
 function Note({ onBack, onViewChange, tabIdx = 0, pageIdx = 0, screenId = '' }: NoteProps) {
-  const { switchToNote } = useTabContext();
+  const { switchToNote, switchToNoteResponse } = useTabContext();
   const [activeFilter, setActiveFilter] = useState('recent');
   const [searchQuery, setSearchQuery] = useState('');
   
@@ -91,7 +91,7 @@ function Note({ onBack, onViewChange, tabIdx = 0, pageIdx = 0, screenId = '' }: 
   const handleItemClick = (item: NoteItem) => {
     if (item.type === 'file') {
       // Navigate to note editor for files
-      switchToNote(pageIdx, screenId, tabIdx);
+      switchToNoteResponse(pageIdx, screenId, tabIdx);
     } else {
       // Handle folder navigation
       console.log('Opening folder:', item.name);
@@ -100,7 +100,7 @@ function Note({ onBack, onViewChange, tabIdx = 0, pageIdx = 0, screenId = '' }: 
 
   const handleCreateNote = () => {
     // Navigate to note editor for creating new note
-    switchToNote(pageIdx, screenId, tabIdx);
+    switchToNoteResponse(pageIdx, screenId, tabIdx);
   };
 
   const handleUpload = () => {

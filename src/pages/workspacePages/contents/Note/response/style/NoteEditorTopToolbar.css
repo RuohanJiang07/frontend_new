@@ -40,10 +40,13 @@
 .author-info-container {
   display: flex;
   align-items: center;
+  flex-wrap: wrap;
+  gap: 8px;
 }
 
 .author-box {
-  width: 137px;
+  min-width: 120px;
+  max-width: 137px;
   height: 36px;
   flex-shrink: 0;
   border-radius: 5px;
@@ -51,13 +54,13 @@
   background: #FDFDFD;
   display: flex;
   align-items: center;
-  padding: 0 12px;
-  margin-right: 16px;
+  padding: 0 8px;
   overflow: hidden;
 }
 
 .created-date-box {
-  min-width: 137px;
+  min-width: 120px;
+  max-width: 137px;
   height: 36px;
   flex-shrink: 0;
   border-radius: 5px;
@@ -65,7 +68,7 @@
   background: #FDFDFD;
   display: flex;
   align-items: center;
-  padding: 0 12px;
+  padding: 0 8px;
   color: #898989;
   font-size: 14px;
 }
@@ -93,6 +96,8 @@
   align-items: center;
   justify-content: space-between;
   width: 100%;
+  flex-wrap: wrap;
+  gap: 8px;
 }
 
 .note-icon-container {
@@ -146,4 +151,84 @@
   align-items: center;
   justify-content: center;
   margin-bottom: 8px;
+  width: 100%;
+}
+
+/* Responsive adjustments for smaller screens */
+@media (max-width: 1200px) {
+  .collapsible-content {
+    width: 98%;
+    max-width: 800px;
+  }
+  
+  .toolbar-container {
+    width: 98%;
+    max-width: 800px;
+  }
+}
+
+@media (max-width: 768px) {
+  .collapsible-content {
+    width: 100%;
+    max-width: 100%;
+    padding: 0 16px;
+  }
+  
+  .toolbar-container {
+    width: 100%;
+    max-width: 100%;
+    padding: 0 16px;
+  }
+  
+  .note-title {
+    font-size: 18px;
+  }
+  
+  .last-saved-container {
+    font-size: 14px;
+  }
+  
+  .author-name {
+    font-size: 12px;
+  }
+  
+  .created-date-box {
+    font-size: 12px;
+  }
+  
+  .note-label {
+    font-size: 10px;
+    padding: 3px 6px;
+  }
+}
+
+@media (max-width: 480px) {
+  .collapsible-content {
+    padding: 0 12px;
+  }
+  
+  .toolbar-container {
+    padding: 0 12px;
+  }
+  
+  .note-title {
+    font-size: 16px;
+  }
+  
+  .last-saved-container {
+    font-size: 12px;
+  }
+  
+  .author-name {
+    font-size: 11px;
+  }
+  
+  .created-date-box {
+    font-size: 11px;
+  }
+  
+  .note-label {
+    font-size: 9px;
+    padding: 2px 5px;
+  }
 }

@@ -3,7 +3,7 @@ import { useEditor, EditorContent, Editor } from '@tiptap/react';
 import StarterKit from '@tiptap/starter-kit';
 import Underline from '@tiptap/extension-underline';
 import TextAlign from '@tiptap/extension-text-align';
-import TextStyle from '@tiptap/extension-text-style';
+import { TextStyle } from '@tiptap/extension-text-style';
 import Color from '@tiptap/extension-color';
 import FontFamily from '@tiptap/extension-font-family';
 import { useTabContext } from '../../../workspaceFrame/TabContext';
@@ -170,7 +170,7 @@ function NoteEditor({ onBack, tabIdx = 0, pageIdx = 0, screenId = '' }: NoteEdit
           </div>
         </div>
         
-        <div className="absolute bottom-6 left-1/2 transform -translate-x-1/2 z-10">
+        <div className="absolute bottom-[60px] left-1/2 transform -translate-x-1/2 z-10">
           <NoteCopilotButton />
         </div>
       </div>

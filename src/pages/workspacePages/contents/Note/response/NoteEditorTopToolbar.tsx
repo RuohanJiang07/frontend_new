@@ -79,9 +79,9 @@ function NoteEditorTopToolbar({ onBack, editor, onZoomIn, onZoomOut }: NoteEdito
   return (
     <div className="flex flex-col items-center" style={{ paddingTop: '40px' }}>
       {/* Collapsible content */}
-      <div className={`collapsible-content ${isCollapsed ? 'collapsed' : 'expanded'} max-w-[800px] mx-auto w-full`}>
+      <div className={`collapsible-content ${isCollapsed ? 'collapsed' : 'expanded'} w-full max-w-[800px] mx-auto`}>
         {/* Header with title and icon - centered at 50% width */}
-        <div className="flex flex-col items-start max-w-[800px] mx-auto w-full">
+        <div className="flex flex-col items-start w-full">
           {/* Note icon, title, and share button - all in one row */}
           <div className="note-header-container">
             <div className="note-icon-container">
@@ -112,7 +112,7 @@ function NoteEditorTopToolbar({ onBack, editor, onZoomIn, onZoomOut }: NoteEdito
         </div>
         
         {/* Last saved info - moved closer to title */}
-        <div className="last-saved-container max-w-[800px] mx-auto w-full mb-1">
+        <div className="last-saved-container w-full mb-1">
           <svg className="cloud-icon" viewBox="0 0 24 24" fill="none" xmlns="http://www.w3.org/2000/svg">
             <path d="M18 10H16.74C16.3659 7.49025 14.2358 5.5 11.64 5.5C9.17383 5.5 7.14625 7.33122 6.64118 9.71839C4.06833 10.2202 2 12.2923 2 14.8C2 17.567 4.433 20 7.2 20H18C20.7614 20 23 17.7614 23 15C23 12.2386 20.7614 10 18 10Z" fill="currentColor"/>
           </svg>
@@ -120,7 +120,7 @@ function NoteEditorTopToolbar({ onBack, editor, onZoomIn, onZoomOut }: NoteEdito
         </div>
         
         {/* Author info */}
-        <div className="author-info-container max-w-[800px] mx-auto w-full">
+        <div className="author-info-container w-full">
           <div className="author-box">
             <div className="author-avatar">
               <img src="/main/landing_page/avatars.png" alt="John Doe" className="w-full h-full object-cover" />
@@ -136,7 +136,7 @@ function NoteEditorTopToolbar({ onBack, editor, onZoomIn, onZoomOut }: NoteEdito
 
       {/* Toolbar with collapse button */}
       <div className="toolbar-container">
-        <div className="flex items-center gap-2 bg-[#F8F8F8] rounded-full border border-[#DFDFDF] px-3 py-1.5 w-[800px]">
+        <div className="flex items-center gap-1 sm:gap-2 bg-[#F8F8F8] rounded-full border border-[#DFDFDF] px-2 sm:px-3 py-1.5 w-full max-w-[800px] mx-auto overflow-x-auto">
           {/* Undo/Redo */}
           <button 
             className={`p-1 text-gray-600 hover:bg-gray-100 rounded-full ${editor?.isActive('undo') ? 'bg-[#DFEDFF]' : ''}`}

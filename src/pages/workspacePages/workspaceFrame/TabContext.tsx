@@ -7,6 +7,7 @@ import DocumentChatResponse from '@/pages/workspacePages/contents/DocumentChat/r
 import ProblemHelpEntry from '@/pages/workspacePages/contents/ProblemHelp/entry/ProblemHelp';
 import ProblemHelpResponse from '@/pages/workspacePages/contents/ProblemHelp/response/ProblemHelpResponse';
 import NoteEntry from '@/pages/workspacePages/contents/Note/entry/Note';
+import NoteResponse from '@/pages/workspacePages/contents/Note/response/NoteResponse';
 
 // New screen object interface
 export interface ScreenObject {
@@ -63,6 +64,8 @@ interface TabContextType {
     switchToProblemHelpResponse: (pageIdx: number, screenId: string, tabIdx: number) => void;
     // New method to switch to Note
     switchToNote: (pageIdx: number, screenId: string, tabIdx: number) => void;
+    // New method to switch to NoteResponse
+    switchToNoteResponse: (pageIdx: number, screenId: string, tabIdx: number) => void;
     
     // Helper methods for UI state
     canClosePage: (pageIdx: number) => boolean;
@@ -93,6 +96,7 @@ const TabContext = createContext<TabContextType>({
     switchToProblemHelp: () => { },
     switchToProblemHelpResponse: () => { },
     switchToNote: () => { },
+    switchToNoteResponse: () => { },
     canClosePage: () => false,
     canCloseTab: () => false,
 } as TabContextType);
@@ -536,6 +540,25 @@ export const TabProvider = ({ children }: { children: ReactNode }) => {
         }));
     };
 
+    // New method to switch to NoteResponse
+    const switchToNoteResponse = (pageIdx: number, screenId: string, tabIdx: number) => {
+        setPages(prev => prev.map((page, idx) => {
+            if (idx !== pageIdx) return page;
+            return {
+                ...page,
+                screenQueue: page.screenQueue.map(screen => {
+                    if (screen.id !== screenId) return screen;
+                    const newTabList = screen.tabList.map((tab, i) =>
+                        i === tabIdx
+                            ? { ...tab, tab: "Note Editor", components: <NoteResponse /> }
+                            : tab
+                    );
+                    return { ...screen, tabList: newTabList };
+                })
+            };
+        }));
+    };
+
     // Helper method to check if a page can be closed
     const canClosePage = (pageIdx: number) => {
         return pages.length > 1;
@@ -600,6 +623,7 @@ export const TabProvider = ({ children }: { children: ReactNode }) => {
                 switchToProblemHelp,
                 switchToProblemHelpResponse,
                 switchToNote,
+                switchToNoteResponse,
                 canClosePage,
                 canCloseTab,
             }}
