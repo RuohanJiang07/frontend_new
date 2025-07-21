@@ -1,4 +1,4 @@
-import React from 'react';
+import React, { useState } from 'react';
 import { useTabContext } from '../../../workspaceFrame/TabContext';
 import './DeepLearnResponse.css';
 
@@ -11,11 +11,62 @@ interface DeepLearnResponseProps {
 }
 
 const DeepLearnResponse: React.FC<DeepLearnResponseProps> = ({ isSplit = false, onBack, tabIdx = 0, pageIdx = 0, screenId = '' }) => {
-  const { switchToDeepLearn } = useTabContext();
+  const { switchToDeepLearn, getActiveScreens, activePage } = useTabContext();
   
+  // Detect if we're in split screen mode
+  const activeScreens = getActiveScreens(activePage);
+  const isInSplitMode = activeScreens.length > 1 && !activeScreens.some(screen => screen.state === 'full-screen');
+  
+  // Interactive section collapse state - default to collapsed in split mode
+  const [isInteractiveCollapsed, setIsInteractiveCollapsed] = useState(true);
+  
+  const [profileSelected, setProfileSelected] = useState(false);
+  const [referenceSelected, setReferenceSelected] = useState(false);
+  const [inputValue, setInputValue] = useState('');
+  const [hasFirstQuestion, setHasFirstQuestion] = useState(false);
+  const [selectedMode, setSelectedMode] = useState<'follow-up' | 'new-topic' | null>(null);
+  const [webSearchEnabled, setWebSearchEnabled] = useState(false);
+  const [selectedResponseMode, setSelectedResponseMode] = useState<'deep-learn' | 'quick-search'>('deep-learn');
+
   const handleBackClick = () => {
     // Navigate back to deep learn entry page
     switchToDeepLearn(pageIdx, screenId, tabIdx);
+  };
+
+  const handleToggleInteractive = () => {
+    setIsInteractiveCollapsed(!isInteractiveCollapsed);
+  };
+
+  const toggleProfile = () => {
+    setProfileSelected(!profileSelected);
+  };
+
+  const toggleReference = () => {
+    setReferenceSelected(!referenceSelected);
+  };
+
+  const handleFollowUp = () => {
+    setHasFirstQuestion(true);
+    setSelectedMode('follow-up');
+    // Additional logic for follow up mode
+  };
+
+  const handleNewTopic = () => {
+    setHasFirstQuestion(true);
+    setSelectedMode('new-topic');
+    // Additional logic for new topic mode
+  };
+
+  const handleModeChange = (newMode: 'follow-up' | 'new-topic') => {
+    setSelectedMode(newMode);
+  };
+
+  const toggleWebSearch = () => {
+    setWebSearchEnabled(!webSearchEnabled);
+  };
+
+  const toggleResponseMode = (mode: 'deep-learn' | 'quick-search') => {
+    setSelectedResponseMode(mode);
   };
 
   return (
@@ -54,52 +105,54 @@ const DeepLearnResponse: React.FC<DeepLearnResponseProps> = ({ isSplit = false, 
           </div>
         </div>
 
-        {/* Right-aligned elements */}
-        <div className="deep-learn-response-header-right">
-          {/* Share Icon */}
-          <button
-            className="deep-learn-response-action-button"
-            aria-label="Share analysis"
-          >
-            <img
-              src="/workspace/share.svg"
-              alt="Share"
-              className="deep-learn-response-action-icon"
-            />
-          </button>
+        {/* Right-aligned elements - Only show in full screen mode */}
+        {!isInSplitMode && (
+          <div className="deep-learn-response-header-right">
+            {/* Share Icon */}
+            <button
+              className="deep-learn-response-action-button"
+              aria-label="Share analysis"
+            >
+              <img
+                src="/workspace/share.svg"
+                alt="Share"
+                className="deep-learn-response-action-icon"
+              />
+            </button>
 
-          {/* Print Icon */}
-          <button
-            className="deep-learn-response-action-button"
-            aria-label="Print analysis"
-          >
-            <img
-              src="/workspace/print.svg"
-              alt="Print"
-              className="deep-learn-response-action-icon"
-            />
-          </button>
+            {/* Print Icon */}
+            <button
+              className="deep-learn-response-action-button"
+              aria-label="Print analysis"
+            >
+              <img
+                src="/workspace/print.svg"
+                alt="Print"
+                className="deep-learn-response-action-icon"
+              />
+            </button>
 
-          {/* Publish to Community Button */}
-          <button
-            className="deep-learn-response-publish-button"
-            aria-label="Publish to community"
-          >
-            <img
-              src="/workspace/publish.svg"
-              alt="Publish"
-              className="deep-learn-response-publish-icon"
-            />
-            <span className="deep-learn-response-publish-text">
-              Publish to Community
-            </span>
-          </button>
-        </div>
+            {/* Publish to Community Button */}
+            <button
+              className="deep-learn-response-publish-button"
+              aria-label="Publish to community"
+            >
+              <img
+                src="/workspace/publish.svg"
+                alt="Publish"
+                className="deep-learn-response-publish-icon"
+              />
+              <span className="deep-learn-response-publish-text">
+                Publish to Community
+              </span>
+            </button>
+          </div>
+        )}
       </header>
 
       {/* Main Content Section */}
       <div className="deep-learn-response-main">
-        <div className="deep-learn-response-content">
+        <div className={`deep-learn-response-content ${isInSplitMode && isInteractiveCollapsed ? 'interactive-collapsed' : ''}`}>
           {/* Conversation Section */}
           <div className="deep-learn-response-conversation">
             {/* Conversation Main Section */}
@@ -315,17 +368,316 @@ const DeepLearnResponse: React.FC<DeepLearnResponseProps> = ({ isSplit = false, 
             <div className="deep-learn-response-input-section">
               {/* Input Area */}
               <div className="deep-learn-response-input-box">
-                <textarea
-                  className="deep-learn-response-input"
-                  placeholder="Type your question here..."
-                />
+                {!hasFirstQuestion ? (
+                  <div className="deep-learn-response-mode-selection">
+                    <span className="deep-learn-response-mode-text">Start a </span>
+                    <button 
+                      className="deep-learn-response-mode-button follow-up"
+                      onClick={handleFollowUp}
+                    >
+                      Follow Up
+                    </button>
+                    <span className="deep-learn-response-mode-text"> or </span>
+                    <button 
+                      className="deep-learn-response-mode-button new-topic"
+                      onClick={handleNewTopic}
+                    >
+                      New Topic
+                    </button>
+                  </div>
+                ) : (
+                  <>
+                    <textarea
+                      className="deep-learn-response-input"
+                      placeholder="Type your question here..."
+                      value={inputValue}
+                      onChange={(e) => setInputValue(e.target.value)}
+                    />
+                    {selectedMode && (
+                      <div className="deep-learn-response-mode-change">
+                        <span className="deep-learn-response-mode-text">Change to </span>
+                        <button 
+                          className={`deep-learn-response-mode-button ${selectedMode === 'follow-up' ? 'new-topic' : 'follow-up'}`}
+                          onClick={() => handleModeChange(selectedMode === 'follow-up' ? 'new-topic' : 'follow-up')}
+                        >
+                          {selectedMode === 'follow-up' ? 'New Topic' : 'Follow Up'}
+                        </button>
+                      </div>
+                    )}
+                  </>
+                )}
+                
+                {/* Buttons at the bottom right */}
+                <div className="deep-learn-response-buttons">
+                  {/* Mode Toggle Button - Only show when New Topic is selected */}
+                  {selectedMode === 'new-topic' && (
+                                          <div className="deep-learn-response-mode-toggle">
+                        <div 
+                          className={`deep-learn-response-mode-toggle-option ${selectedResponseMode === 'deep-learn' ? 'selected' : 'unselected'}`}
+                          onClick={() => toggleResponseMode('deep-learn')}
+                          title="Deep Learn"
+                        >
+                          <img 
+                            src="/workspace/deepLearn/lens-stars.svg" 
+                            alt="Deep Learn Icon" 
+                            className="deep-learn-response-mode-toggle-icon"
+                            style={{ filter: selectedResponseMode === 'deep-learn' ? 'brightness(0) invert(1)' : 'brightness(0) saturate(100%) invert(32%) sepia(9%) saturate(2096%) hue-rotate(182deg) brightness(93%) contrast(87%)' }}
+                          />
+                        </div>
+                        <div 
+                          className={`deep-learn-response-mode-toggle-option ${selectedResponseMode === 'quick-search' ? 'selected' : 'unselected'}`}
+                          onClick={() => toggleResponseMode('quick-search')}
+                          title="Quick Search"
+                        >
+                          <img 
+                            src="/workspace/deepLearn/lens-check.svg" 
+                            alt="Quick Search Icon" 
+                            className="deep-learn-response-mode-toggle-icon"
+                            style={{ filter: selectedResponseMode === 'quick-search' ? 'brightness(0) invert(1)' : 'brightness(0) saturate(100%) invert(32%) sepia(9%) saturate(2096%) hue-rotate(182deg) brightness(93%) contrast(87%)' }}
+                          />
+                        </div>
+                      </div>
+                  )}
+
+                  {/* Web Search Toggle Button */}
+                  <button 
+                    className={`deep-learn-response-web-search ${webSearchEnabled ? 'selected' : 'unselected'}`}
+                    onClick={toggleWebSearch}
+                    title="Toggle Web Search" 
+                  >
+                    <img 
+                      src="/workspace/deepLearn/language.svg" 
+                      alt="Web Search" 
+                      className="deep-learn-response-web-search-icon"
+                      style={{ filter: webSearchEnabled ? 'brightness(0) saturate(100%) invert(32%) sepia(9%) saturate(2096%) hue-rotate(182deg) brightness(93%) contrast(87%)' : 'brightness(0) saturate(100%) invert(48%) sepia(0%) saturate(0%) hue-rotate(251deg) brightness(94%) contrast(92%)' }}
+                    />
+                  </button>
+
+                  {/* Profile Select Button */}
+                  <button 
+                    className={`deep-learn-response-button ${profileSelected ? 'selected' : ''}`}
+                    onClick={toggleProfile}
+                    title="Select Profile" 
+                  >
+                    <img 
+                      src="/workspace/deepLearn/contacts-line.svg" 
+                      alt="Profile" 
+                      className="deep-learn-response-button-icon"
+                      style={{ filter: profileSelected ? 'brightness(0) invert(1)' : 'brightness(0) saturate(100%) invert(39%) sepia(0%) saturate(0%) hue-rotate(147deg) brightness(94%) contrast(87%)' }}
+                    />
+                  </button>
+                  
+                  {/* Reference Select Button */}
+                  <button 
+                    className={`deep-learn-response-button ${referenceSelected ? 'selected' : ''}`}
+                    onClick={toggleReference}
+                    title="Select References" 
+                  >
+                    <img 
+                      src="/workspace/deepLearn/folder.svg" 
+                      alt="References" 
+                      className="deep-learn-response-button-icon"
+                      style={{ filter: referenceSelected ? 'brightness(0) invert(1)' : 'brightness(0) saturate(100%) invert(39%) sepia(0%) saturate(0%) hue-rotate(147deg) brightness(94%) contrast(87%)' }}
+                    />
+                  </button>
+
+                  {/* Separator Line */}
+                  <div className="deep-learn-response-button-separator"></div>
+
+                  {/* Send Button */}
+                  <button 
+                    className={`deep-learn-response-send-button ${inputValue.trim() ? 'active' : ''}`}
+                    disabled={!inputValue.trim()}
+                    title="Send Query" 
+                  >
+                    <img 
+                      src="/workspace/arrow-up.svg" 
+                      alt="Send" 
+                      className="deep-learn-response-send-icon"
+                    />
+                  </button>
+                </div>
               </div>
             </div>
           </div>
 
-          {/* Interactive Section - Placeholder for now */}
-          <div className="deep-learn-response-interactive">
-            {/* Interactive content will be added later */}
+                    {/* Interactive Section */}
+          <div className={`deep-learn-response-interactive ${isInSplitMode && isInteractiveCollapsed ? 'collapsed' : ''}`}>
+            {/* Header for collapsible section - Only show in split mode */}
+            {isInSplitMode && (
+              <div className="deep-learn-response-interactive-header" onClick={handleToggleInteractive}>
+                <img 
+                  src={isInteractiveCollapsed 
+                    ? "/workspace/documentChat/sidebar-unfold.svg" 
+                    : "/workspace/documentChat/sidebar-fold.svg"
+                  }
+                  alt={isInteractiveCollapsed ? "Expand interactive section" : "Collapse interactive section"} 
+                  className="deep-learn-response-interactive-arrow"
+                />
+                <span className="deep-learn-response-interactive-title">
+                  Interactive
+                </span>
+              </div>
+            )}
+
+            {/* Collapsible content - Show always in full screen, conditionally in split mode */}
+            {(!isInSplitMode || !isInteractiveCollapsed) && (
+              <>
+                {/* Top Gray Box */}
+                <div className="deep-learn-response-interactive-box top-box">
+                  <div className="deep-learn-response-interactive-content">
+                    {/* Related Videos Section */}
+                    <div className="deep-learn-response-related-videos">
+                      {/* Header */}
+                      <div className="deep-learn-response-related-header">
+                        <img 
+                          src="/workspace/deepLearn/related-videos.svg" 
+                          alt="Related Videos" 
+                          className="deep-learn-response-related-icon"
+                        />
+                        <span className="deep-learn-response-related-title">
+                          Related Videos
+                        </span>
+                      </div>
+                      
+                      {/* Video Content */}
+                      <div className="deep-learn-response-video-content">
+                        {/* Single Video Box */}
+                        <div className="deep-learn-response-video-box">
+                          {/* Image Section */}
+                          <div className="deep-learn-response-video-image-section">
+                            <img 
+                              src="https://images.unsplash.com/photo-1446776811953-b23d57bd21aa?w=284&h=132&fit=crop" 
+                              alt="Universe video thumbnail" 
+                              className="deep-learn-response-video-image"
+                            />
+                          </div>
+                          
+                          {/* Text Section */}
+                          <div className="deep-learn-response-video-text-section">
+                            <h4 className="deep-learn-response-video-title">
+                              DNA and Gene Editing Using CRISPR Technology
+                            </h4>
+                            <div className="deep-learn-response-video-source">
+                              <img 
+                                src="/workspace/deepLearn/youtube.svg" 
+                                alt="YouTube" 
+                                className="deep-learn-response-youtube-icon"
+                              />
+                              <span className="deep-learn-response-source-text">
+                                Science Channel
+                              </span>
+                            </div>
+                          </div>
+                        </div>
+                      </div>
+                    </div>
+
+                    {/* Related Webpages Section */}
+                    <div className="deep-learn-response-related-webpages">
+                      {/* Header */}
+                      <div className="deep-learn-response-webpages-header">
+                        <img 
+                          src="/workspace/deepLearn/related-webpages.svg" 
+                          alt="Related Webpages" 
+                          className="deep-learn-response-webpages-icon"
+                        />
+                        <span className="deep-learn-response-webpages-title">
+                          Related Webpages
+                        </span>
+                      </div>
+                      
+                      {/* Webpages Content */}
+                      <div className="deep-learn-response-webpages-content">
+                        {/* First Webpage Box */}
+                        <div className="deep-learn-response-webpage-box">
+                          <h4 className="deep-learn-response-webpage-title">
+                            Related Webpages 1
+                          </h4>
+                          <p className="deep-learn-response-webpage-description">
+                            Discover Pinterest's best ideas and inspiration for Study icon. Get inspired and try out new things.
+                          </p>
+                        </div>
+                        
+                        {/* Second Webpage Box */}
+                        <div className="deep-learn-response-webpage-box">
+                          <h4 className="deep-learn-response-webpage-title">
+                            Related Webpages 1
+                          </h4>
+                          <p className="deep-learn-response-webpage-description">
+                            Discover Pinterest's best ideas and inspiration for Study icon. Get inspired and try out new things.
+                          </p>
+                        </div>
+                      </div>
+                    </div>
+                  </div>
+                </div>
+                
+                {/* Bottom Gray Box */}
+                <div className="deep-learn-response-interactive-box bottom-box">
+                  <div className="deep-learn-response-interactive-content">
+                    {/* Concept Map Section */}
+                    <div className="deep-learn-response-concept-map">
+                      {/* Header */}
+                      <div className="deep-learn-response-concept-map-header">
+                        <img 
+                          src="/workspace/deepLearn/concept-map.svg" 
+                          alt="Concept Map" 
+                          className="deep-learn-response-concept-map-icon"
+                        />
+                        <span className="deep-learn-response-concept-map-title">
+                          Concept Map
+                        </span>
+                      </div>
+                      
+                      {/* Concept Map Content */}
+                      <div className="deep-learn-response-concept-map-content">
+                        {/* Concept Map Box */}
+                        <div className="deep-learn-response-concept-map-box">
+                          {/* Concept Map visualization would go here */}
+                          <div className="deep-learn-response-concept-map-placeholder">
+                            <div className="deep-learn-response-concept-map-node black-hole-node">
+                              <div className="deep-learn-response-concept-map-node-dot"></div>
+                              <span className="deep-learn-response-concept-map-node-label">Black Hole</span>
+                            </div>
+                            <div className="deep-learn-response-concept-map-node white-dwarf-node">
+                              <div className="deep-learn-response-concept-map-node-dot"></div>
+                              <span className="deep-learn-response-concept-map-node-label">White dwarf</span>
+                            </div>
+                            <div className="deep-learn-response-concept-map-node supernova-node">
+                              <div className="deep-learn-response-concept-map-node-dot"></div>
+                              <span className="deep-learn-response-concept-map-node-label">Type I Supernova</span>
+                            </div>
+                            <div className="deep-learn-response-concept-map-node horizon-node">
+                              <div className="deep-learn-response-concept-map-node-dot"></div>
+                              <span className="deep-learn-response-concept-map-node-label">Stretched Horizon</span>
+                            </div>
+                            <div className="deep-learn-response-concept-map-node cosmology-node">
+                              <div className="deep-learn-response-concept-map-node-dot"></div>
+                              <span className="deep-learn-response-concept-map-node-label">Cosmology</span>
+                            </div>
+                            <div className="deep-learn-response-concept-map-node gravity-wave-node">
+                              <div className="deep-learn-response-concept-map-node-dot"></div>
+                              <span className="deep-learn-response-concept-map-node-label">Gravity Wave</span>
+                            </div>
+                          </div>
+                        </div>
+                        
+                        {/* Current Selection Indicator */}
+                        <div className="deep-learn-response-concept-map-selection">
+                          <span className="deep-learn-response-concept-map-selection-text">
+                            You are currently at:
+                          </span>
+                          <div className="deep-learn-response-concept-map-selection-button">
+                            Black Hole
+                          </div>
+                        </div>
+                      </div>
+                    </div>
+                  </div>
+                </div>
+              </>
+            )}
           </div>
         </div>
       </div>

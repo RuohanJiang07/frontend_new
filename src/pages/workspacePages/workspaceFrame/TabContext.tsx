@@ -2,6 +2,7 @@ import { createContext, useContext, useState, ReactNode } from 'react';
 
 import AiPoweredTools from '@/pages/workspacePages/contents/default/AiPoweredTools';
 import DeepLearnEntry from '@/pages/workspacePages/contents/DeepLearn/entry/DeepLearn';
+import DeepLearnResponse from '@/pages/workspacePages/contents/DeepLearn/response/DeepLearnResponse';
 import DocumentChatEntry from '@/pages/workspacePages/contents/DocumentChat/entry/DocumentChat';
 import DocumentChatResponse from '@/pages/workspacePages/contents/DocumentChat/response/DocumentChatResponse';
 import ProblemHelpEntry from '@/pages/workspacePages/contents/ProblemHelp/entry/ProblemHelp';
@@ -54,6 +55,8 @@ interface TabContextType {
     
     // New method to switch to DeepLearn
     switchToDeepLearn: (pageIdx: number, screenId: string, tabIdx: number) => void;
+    // New method to switch to DeepLearnResponse
+    switchToDeepLearnResponse: (pageIdx: number, screenId: string, tabIdx: number) => void;
     // New method to switch to DocumentChat
     switchToDocumentChat: (pageIdx: number, screenId: string, tabIdx: number) => void;
     // New method to switch to DocumentChatResponse
@@ -91,6 +94,7 @@ const TabContext = createContext<TabContextType>({
     activeTabIndices: {},
     setActiveTabIndex: () => { },
     switchToDeepLearn: () => { },
+    switchToDeepLearnResponse: () => { },
     switchToDocumentChat: () => { },
     switchToDocumentChatResponse: () => { },
     switchToProblemHelp: () => { },
@@ -445,6 +449,25 @@ export const TabProvider = ({ children }: { children: ReactNode }) => {
         }));
     };
 
+    // New method to switch to DeepLearnResponse
+    const switchToDeepLearnResponse = (pageIdx: number, screenId: string, tabIdx: number) => {
+        setPages(prev => prev.map((page, idx) => {
+            if (idx !== pageIdx) return page;
+            return {
+                ...page,
+                screenQueue: page.screenQueue.map(screen => {
+                    if (screen.id !== screenId) return screen;
+                    const newTabList = screen.tabList.map((tab, i) =>
+                        i === tabIdx
+                            ? { ...tab, tab: "Deep Learn Response", components: <DeepLearnResponse /> }
+                            : tab
+                    );
+                    return { ...screen, tabList: newTabList };
+                })
+            };
+        }));
+    };
+
     // New method to switch to DocumentChat
     const switchToDocumentChat = (pageIdx: number, screenId: string, tabIdx: number) => {
         setPages(prev => prev.map((page, idx) => {
@@ -618,6 +641,7 @@ export const TabProvider = ({ children }: { children: ReactNode }) => {
                 activeTabIndices,
                 setActiveTabIndex,
                 switchToDeepLearn,
+                switchToDeepLearnResponse,
                 switchToDocumentChat,
                 switchToDocumentChatResponse,
                 switchToProblemHelp,

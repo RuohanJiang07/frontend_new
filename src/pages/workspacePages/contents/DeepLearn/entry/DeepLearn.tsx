@@ -22,7 +22,7 @@ interface TrendingTopic {
 }
 
 function DeepLearn({ isSplit = false, onBack, onViewChange, tabIdx = 0, pageIdx = 0, screenId = '' }: DeepLearnProps) {
-  const { switchToDeepLearn } = useTabContext();
+  const { switchToDeepLearnResponse } = useTabContext();
   const [selectedMode, setSelectedMode] = useState<'deep-learn' | 'quick-search'>('deep-learn');
   const [selectedTab, setSelectedTab] = useState<'trending' | 'history'>('trending');
   const [webSearchEnabled, setWebSearchEnabled] = useState(false);
@@ -170,20 +170,20 @@ function DeepLearn({ isSplit = false, onBack, onViewChange, tabIdx = 0, pageIdx 
   // Handle navigation to response page
   const handleNavigateToResponse = () => {
     if (inputValue.trim()) {
-      switchToDeepLearn(pageIdx, screenId, tabIdx);
+      switchToDeepLearnResponse(pageIdx, screenId, tabIdx);
     }
   };
 
   // Handle history item click
   const handleHistoryItemClick = (historyItem: any) => {
-    switchToDeepLearn(pageIdx, screenId, tabIdx);
+    switchToDeepLearnResponse(pageIdx, screenId, tabIdx);
   };
 
   // Handle trending topic click
   const handleTrendingTopicClick = (topic: TrendingTopic) => {
     setInputValue(topic.title);
-    // Optionally navigate to response page immediately
-    // onViewChange?.('deep-learn-response');
+    // Navigate to response page immediately
+    switchToDeepLearnResponse(pageIdx, screenId, tabIdx);
   };
 
   return (
