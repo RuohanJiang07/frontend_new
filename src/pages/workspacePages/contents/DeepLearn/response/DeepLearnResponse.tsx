@@ -1,15 +1,21 @@
 import React from 'react';
+import { useTabContext } from '../../../workspaceFrame/TabContext';
 import './DeepLearnResponse.css';
 
 interface DeepLearnResponseProps {
   isSplit?: boolean;
   onBack?: () => void;
+  tabIdx?: number;
+  pageIdx?: number;
+  screenId?: string;
 }
 
-const DeepLearnResponse: React.FC<DeepLearnResponseProps> = ({ isSplit = false, onBack }) => {
+const DeepLearnResponse: React.FC<DeepLearnResponseProps> = ({ isSplit = false, onBack, tabIdx = 0, pageIdx = 0, screenId = '' }) => {
+  const { switchToDeepLearn } = useTabContext();
+  
   const handleBackClick = () => {
     // Navigate back to deep learn entry page
-    onBack?.();
+    switchToDeepLearn(pageIdx, screenId, tabIdx);
   };
 
   return (

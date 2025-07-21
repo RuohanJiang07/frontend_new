@@ -6,15 +6,20 @@ import TextAlign from '@tiptap/extension-text-align';
 import TextStyle from '@tiptap/extension-text-style';
 import Color from '@tiptap/extension-color';
 import FontFamily from '@tiptap/extension-font-family';
+import { useTabContext } from '../../../workspaceFrame/TabContext';
 import NoteCopilotButton from './NoteCopilotButton';
 import NoteEditorTopToolbar from './NoteEditorTopToolbar';
 import './style/NoteEditor.css';
 
 interface NoteEditorProps {
   onBack: () => void;
+  tabIdx?: number;
+  pageIdx?: number;
+  screenId?: string;
 }
 
-function NoteEditor({ onBack }: NoteEditorProps) {
+function NoteEditor({ onBack, tabIdx = 0, pageIdx = 0, screenId = '' }: NoteEditorProps) {
+  const { switchToNote } = useTabContext();
   const [zoomLevel, setZoomLevel] = useState(1);
   const [lineCount, setLineCount] = useState(1);
   const [lineHeights, setLineHeights] = useState<number[]>([]);
@@ -149,7 +154,7 @@ function NoteEditor({ onBack }: NoteEditorProps) {
   return (
     <div className="h-[calc(100vh-88px)] flex flex-col bg-white overflow-hidden">
       <NoteEditorTopToolbar 
-        onBack={onBack} 
+        onBack={() => switchToNote(pageIdx, screenId, tabIdx)} 
         editor={editor} 
         onZoomIn={handleZoomIn}
         onZoomOut={handleZoomOut}

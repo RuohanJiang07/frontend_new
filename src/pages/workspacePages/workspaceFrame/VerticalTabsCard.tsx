@@ -14,6 +14,7 @@ interface VerticalTabsCardProps {
     onlyShowTabList?: boolean;
     disabledTabList?: boolean;
     isCollapsed?: boolean; // Whether this screen is collapsed (minimized)
+    pageIdx?: number; // Add pageIdx prop
 }
 
 const VerticalTabsCard: React.FC<VerticalTabsCardProps> = ({
@@ -27,19 +28,32 @@ const VerticalTabsCard: React.FC<VerticalTabsCardProps> = ({
     onlyShowTabList = false,
     disabledTabList = false,
     isCollapsed = false,
+    pageIdx = 0, // Default to 0
 }) => {
-    const [activeIdx, setActiveIdx] = useState(0);
-    const { addTab, removeTab, activePage } = useTabContext();
+    const { addTab, removeTab, activePage, canCloseTab, getActiveScreens, activeTabIndices, setActiveTabIndex, setActiveScreenId } = useTabContext();
+    
+    // Get the active tab index for this screen
+    const activeIdx = activeTabIndices[activePage]?.[screenId] || 0;
 
     // Close tab
     const handleClose = (e: React.MouseEvent, idx: number) => {
         e.stopPropagation();
+        
+        // Check if this would be the last tab in this screen
+        if (data.length <= 1) {
+            // This would empty the screen, so close the split screen instead
+            if (onClose) {
+                onClose();
+            }
+            return;
+        }
+        
         removeTab(activePage, screenId, idx);
         // If closing the currently active tab, activate the previous one
         if (activeIdx === idx) {
-            setActiveIdx(Math.max(0, activeIdx - 1));
+            setActiveTabIndex(screenId, Math.max(0, activeIdx - 1));
         } else if (activeIdx > idx) {
-            setActiveIdx(activeIdx - 1);
+            setActiveTabIndex(screenId, activeIdx - 1);
         }
     };
 
@@ -51,7 +65,25 @@ const VerticalTabsCard: React.FC<VerticalTabsCardProps> = ({
             tabList: [],
         };
         addTab(activePage, screenId, newTab);
-        setActiveIdx(data.length); // Activate the newly added tab
+        setActiveTabIndex(screenId, data.length); // Activate the newly added tab
+    };
+
+    // Helper function to check if closing this tab will trigger split screen closing
+    const willCloseSplitScreen = (tabIdx: number) => {
+        const activeScreens = getActiveScreens(activePage);
+        return data.length <= 1 && activeScreens.length > 1;
+    };
+
+    // Helper function to inject props into tab components
+    const renderTabContent = (component: React.ReactNode, tabIdx: number) => {
+        if (React.isValidElement(component)) {
+            return React.cloneElement(component, {
+                tabIdx,
+                pageIdx,
+                screenId,
+            } as any);
+        }
+        return component;
     };
 
     // When onlyShowTabList is true, show only the vertical tab list
@@ -82,13 +114,21 @@ const VerticalTabsCard: React.FC<VerticalTabsCardProps> = ({
                                         position: 'relative',
                                         gap: '4px',
                                     }}
-                                    onClick={() => !disabledTabList && setActiveIdx(idx)}
+                                    onClick={() => !disabledTabList && setActiveTabIndex(screenId, idx)}
                                 >
                                     {/* Close button */}
-                                    {!disabledTabList && (
+                                    {!disabledTabList && canCloseTab(activePage, screenId, idx) && (
                                         <span
                                             className="top-1 right-1 w-4 h-4 flex items-center justify-center text-[#666] opacity-50 hover:opacity-70 cursor-pointer"
                                             onClick={e => handleClose(e, idx)}
+                                            style={{ fontSize: 12 }}
+                                        >
+                                            <X className="w-3 h-3" />
+                                        </span>
+                                    )}
+                                    {!disabledTabList && !canCloseTab(activePage, screenId, idx) && (
+                                        <span
+                                            className="top-1 right-1 w-4 h-4 flex items-center justify-center text-[#999] opacity-30 cursor-not-allowed"
                                             style={{ fontSize: 12 }}
                                         >
                                             <X className="w-3 h-3" />
@@ -148,13 +188,21 @@ const VerticalTabsCard: React.FC<VerticalTabsCardProps> = ({
                                     position: 'relative',
                                     gap: '4px',
                                 }}
-                                onClick={() => !disabledTabList && setActiveIdx(idx)}
+                                onClick={() => !disabledTabList && setActiveTabIndex(screenId, idx)}
                             >
                                 {/* Close button */}
-                                {!disabledTabList && (
+                                {!disabledTabList && canCloseTab(activePage, screenId, idx) && (
                                     <span
                                         className="top-1 right-1 w-4 h-4 flex items-center justify-center text-[#222] opacity-70 hover:opacity-100 cursor-pointer"
                                         onClick={e => handleClose(e, idx)}
+                                        style={{ fontSize: 12 }}
+                                    >
+                                        <X className="w-3 h-3" />
+                                    </span>
+                                )}
+                                {!disabledTabList && !canCloseTab(activePage, screenId, idx) && (
+                                    <span
+                                        className="top-1 right-1 w-4 h-4 flex items-center justify-center text-[#999] opacity-30 cursor-not-allowed"
                                         style={{ fontSize: 12 }}
                                     >
                                         <X className="w-3 h-3" />
@@ -222,7 +270,7 @@ const VerticalTabsCard: React.FC<VerticalTabsCardProps> = ({
             {!isCollapsed && (
                 <main className="flex-1 flex flex-col items-center transition-all duration-500 min-h-0">
                     <div className="w-full bg-white rounded-2xl shadow p-4 overflow-y-auto" style={{ height: 'calc(100vh - 6rem)', marginBottom: '0.5rem' }}>
-                        {data[activeIdx]?.components}
+                        {data[activeIdx]?.components && renderTabContent(data[activeIdx].components, activeIdx)}
                     </div>
                 </main>
             )}

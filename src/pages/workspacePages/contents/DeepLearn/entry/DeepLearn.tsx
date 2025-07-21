@@ -2,11 +2,15 @@ import React from 'react';
 import { useState } from 'react';
 import './DeepLearn.css';
 import { useEffect } from 'react';
+import { useTabContext } from '../../../workspaceFrame/TabContext';
 
 interface DeepLearnProps {
   isSplit?: boolean;
   onBack?: () => void;
   onViewChange?: (view: string | null) => void;
+  tabIdx?: number;
+  pageIdx?: number;
+  screenId?: string;
 }
 
 interface TrendingTopic {
@@ -17,7 +21,8 @@ interface TrendingTopic {
   heat: number;
 }
 
-function DeepLearn({ isSplit = false, onBack, onViewChange }: DeepLearnProps) {
+function DeepLearn({ isSplit = false, onBack, onViewChange, tabIdx = 0, pageIdx = 0, screenId = '' }: DeepLearnProps) {
+  const { switchToDeepLearn } = useTabContext();
   const [selectedMode, setSelectedMode] = useState<'deep-learn' | 'quick-search'>('deep-learn');
   const [selectedTab, setSelectedTab] = useState<'trending' | 'history'>('trending');
   const [webSearchEnabled, setWebSearchEnabled] = useState(false);
@@ -165,13 +170,13 @@ function DeepLearn({ isSplit = false, onBack, onViewChange }: DeepLearnProps) {
   // Handle navigation to response page
   const handleNavigateToResponse = () => {
     if (inputValue.trim()) {
-      onViewChange?.('deep-learn-response');
+      switchToDeepLearn(pageIdx, screenId, tabIdx);
     }
   };
 
   // Handle history item click
   const handleHistoryItemClick = (historyItem: any) => {
-    onViewChange?.('deep-learn-response');
+    switchToDeepLearn(pageIdx, screenId, tabIdx);
   };
 
   // Handle trending topic click

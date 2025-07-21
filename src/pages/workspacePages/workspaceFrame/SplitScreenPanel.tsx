@@ -11,7 +11,8 @@ const SplitScreenPanel: React.FC = () => {
         createSplitScreen, 
         closeSplitScreen, 
         toggleFullscreen,
-        getActiveScreens 
+        getActiveScreens,
+        setActiveScreenId
     } = useTabContext();
 
     const page = pages[activePage];
@@ -156,7 +157,11 @@ const SplitScreenPanel: React.FC = () => {
         <div className={`flex min-w-0 relative max-w-full transition-all duration-300 ${hasFullscreenScreen ? 'gap-1' : 'gap-2'} ${!hasFullscreenScreen && hasMultipleScreens ? 'justify-center' : ''}`}>
             {/* Render all active screens */}
             {activeScreens.map((screen) => (
-                <div key={screen.id} className={getPanelClass(screen)}>
+                <div 
+                    key={screen.id} 
+                    className={getPanelClass(screen)}
+                    onClick={() => setActiveScreenId(screen.id)}
+                >
                     <VerticalTabsCard
                         data={screen.tabList}
                         screenId={screen.id}
@@ -168,6 +173,7 @@ const SplitScreenPanel: React.FC = () => {
                         onlyShowTabList={shouldShowOnlyTabList(screen)}
                         disabledTabList={isTabListDisabled()}
                         isCollapsed={isScreenCollapsed(screen)}
+                        pageIdx={activePage}
                     />
                 </div>
             ))}

@@ -1,9 +1,13 @@
 import React, { useState, useRef } from 'react';
+import { useTabContext } from '../../../workspaceFrame/TabContext';
 import './ProblemHelpResponse.css';
 import { MarkdownRenderer } from '../../../../../components/ui/markdown';
 
 interface ProblemHelpResponseProps {
   onBack: () => void;
+  tabIdx?: number;
+  pageIdx?: number;
+  screenId?: string;
 }
 
 // Conversation message interface
@@ -18,7 +22,8 @@ interface ConversationMessage {
   }>;
 }
 
-function ProblemHelpResponse({ onBack }: ProblemHelpResponseProps) {
+function ProblemHelpResponse({ onBack, tabIdx = 0, pageIdx = 0, screenId = '' }: ProblemHelpResponseProps) {
+  const { switchToProblemHelp } = useTabContext();
   const [followUpQuestion, setFollowUpQuestion] = useState('');
   const [isInputFocused, setIsInputFocused] = useState(false);
   const [profileSelected, setProfileSelected] = useState(false);
@@ -243,7 +248,7 @@ If μ_s = 0.3 and μ_k = 0.2:
         <div className="problem-help-response-header-left">
           {/* Back Arrow */}
           <button
-            onClick={onBack}
+            onClick={() => switchToProblemHelp(pageIdx, screenId, tabIdx)}
             className="problem-help-response-back-button"
             aria-label="Go back to problem help entry"
           >

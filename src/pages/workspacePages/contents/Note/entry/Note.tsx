@@ -1,5 +1,6 @@
 import React, { useState } from 'react';
 import { MoreHorizontalIcon, UploadIcon, FolderPlusIcon, PlusIcon, ClockIcon, FileTextIcon, SearchIcon } from 'lucide-react';
+import { useTabContext } from '../../../workspaceFrame/TabContext';
 import './Note.css';
 
 interface NoteItem {
@@ -14,11 +15,20 @@ interface NoteItem {
 interface NoteProps {
   onBack?: () => void;
   onViewChange?: (view: string | null) => void;
+  tabIdx?: number;
+  pageIdx?: number;
+  screenId?: string;
 }
 
-function Note({ onBack, onViewChange }: NoteProps) {
+function Note({ onBack, onViewChange, tabIdx = 0, pageIdx = 0, screenId = '' }: NoteProps) {
+  const { switchToNote } = useTabContext();
   const [activeFilter, setActiveFilter] = useState('recent');
   const [searchQuery, setSearchQuery] = useState('');
+  
+  // Get split screen context
+  const { activePage, getActiveScreens } = useTabContext();
+  const activeScreens = getActiveScreens(activePage);
+  const isSplit = activeScreens.length > 1;
 
   // Sample data matching the image
   const noteItems: NoteItem[] = [
@@ -81,7 +91,7 @@ function Note({ onBack, onViewChange }: NoteProps) {
   const handleItemClick = (item: NoteItem) => {
     if (item.type === 'file') {
       // Navigate to note editor for files
-      onViewChange?.('smart-note-editor');
+      switchToNote(pageIdx, screenId, tabIdx);
     } else {
       // Handle folder navigation
       console.log('Opening folder:', item.name);
@@ -90,7 +100,7 @@ function Note({ onBack, onViewChange }: NoteProps) {
 
   const handleCreateNote = () => {
     // Navigate to note editor for creating new note
-    onViewChange?.('smart-note-editor');
+    switchToNote(pageIdx, screenId, tabIdx);
   };
 
   const handleUpload = () => {
@@ -154,13 +164,6 @@ function Note({ onBack, onViewChange }: NoteProps) {
               <FileTextIcon size={16} />
               All Notes
             </button>
-            
-            <div className="storage-info-inline">
-              <span>0.83 GB of 2.0 GB used</span>
-              <div className="storage-bar-inline">
-                <div className="storage-progress-inline"></div>
-              </div>
-            </div>
           </div>
           
           <div className="search-container">
@@ -176,7 +179,7 @@ function Note({ onBack, onViewChange }: NoteProps) {
         </div>
 
         {/* Files Grid */}
-        <div className="files-grid">
+        <div className={`files-grid ${isSplit ? 'split' : ''}`}>
           {filteredItems.map((item) => (
             <div
               key={item.id}

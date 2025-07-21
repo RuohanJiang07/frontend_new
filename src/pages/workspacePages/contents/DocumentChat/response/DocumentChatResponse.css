@@ -14,7 +14,7 @@
   justify-content: space-between;
   height: 53px;
   width: 100%;
-  padding: 0 16px;
+  padding: 0 10px;
 }
 
 .document-chat-response-header-left {
@@ -136,10 +136,11 @@
   display: flex;
   align-items: center;
   height: 28px;
-  padding: 5px 12px;
+  padding: 5px 10px;
+  min-width: 180px; /* Minimum width to preserve text layout */
   background: #4C6694;
   border-radius: 6px;
-  gap: 10px;
+  gap: 6px;
   border: none;
   cursor: pointer;
   transition: all 0.2s ease-in-out;
@@ -169,14 +170,19 @@
   justify-content: center;
   width: 100%;
   height: 100%;
+  padding-bottom: 25px; /* Remove bottom padding to eliminate extra space */
 }
 
 .document-chat-response-content {
   width: 100%;
-  max-width: 1131px;
+  max-width: 1200px; /* Increased from 1131px for better responsiveness */
   display: flex;
-  gap: 32px;
+  gap: 2.8%; /* Convert 32px gap to percentage (32/1131 ≈ 2.8%) */
   height: 100%;
+  padding: 0 16px; /* Add left and right padding to prevent content from touching edges */
+  padding-bottom: 0; /* Remove bottom padding to eliminate extra space */
+  flex: 1;
+  min-height: 0;
 }
 
 /* File List Section */
@@ -186,8 +192,80 @@
   align-items: flex-end;
   gap: 36px;
   flex-shrink: 0;
-  width: 280px;
+  flex-basis: 24.8%; /* Convert 280px to percentage (280/1131 ≈ 24.8%) */
+  min-width: 240px; /* Minimum width to prevent layout issues */
+  max-width: 320px; /* Maximum width to prevent it from getting too large */
   padding-top: 48px;
+  transition: all 0.3s ease-in-out;
+  position: relative; /* For absolute positioning of toggle button */
+}
+
+/* Collapsed state for file list */
+.document-chat-response-file-list.collapsed {
+  flex-basis: 40px; /* Much smaller when collapsed - just icon width */
+  min-width: 40px;
+  max-width: 40px;
+  padding-top: 48px; /* Keep top padding for toggle button positioning */
+}
+
+.document-chat-response-file-list.collapsed .document-chat-response-file-list-content {
+  display: none; /* Hide the file list content when collapsed */
+}
+
+.document-chat-response-file-list.collapsed .document-chat-response-add-button {
+  display: none; /* Hide the add button when collapsed */
+}
+
+/* Toggle Button Styles */
+.document-chat-response-toggle-button {
+  position: absolute;
+  top: 16px; /* Position higher than the files list */
+  right: 0; /* Position at the right edge */
+  display: flex;
+  align-items: center;
+  justify-content: center;
+  gap: 8px;
+  width: auto;
+  min-width: 32px;
+  height: 32px;
+  padding: 6px 8px;
+  background: #f0f0f0;
+  border: 1px solid #ddd;
+  border-radius: 6px 0 0 6px; /* Rounded only on left side since it's at the edge */
+  cursor: pointer;
+  transition: all 0.2s ease-in-out;
+  font-family: -apple-system, BlinkMacSystemFont, "SF Pro", "Segoe UI", Roboto, Helvetica, Arial, sans-serif;
+  font-size: 14px;
+  font-weight: 500;
+  color: #666;
+  z-index: 10; /* Ensure it's above other content */
+}
+
+.document-chat-response-toggle-button:hover {
+  background: #e0e0e0;
+  border-color: #ccc;
+}
+
+.document-chat-response-toggle-icon {
+  width: 16px;
+  height: 16px;
+  transition: transform 0.3s ease;
+}
+
+.document-chat-response-toggle-text {
+  white-space: nowrap;
+}
+
+/* When collapsed, show only the toggle button as a small icon */
+.document-chat-response-file-list.collapsed .document-chat-response-toggle-button {
+  width: 32px;
+  min-width: 32px;
+  padding: 6px;
+  border-radius: 6px 0 0 6px;
+}
+
+.document-chat-response-file-list.collapsed .document-chat-response-toggle-text {
+  display: none; /* Hide text when collapsed to save space */
 }
 
 .document-chat-response-file-list-content {
@@ -259,18 +337,23 @@
 }
 
 .document-chat-response-file-name {
-  width: 230px;
+  flex: 1; /* Use flex instead of fixed width */
+  min-width: 0; /* Allow text to wrap/truncate */
   text-align: left;
   color: #09090B;
   font-family: -apple-system, BlinkMacSystemFont, "SF Pro", "Segoe UI", Roboto, Helvetica, Arial, sans-serif;
   font-size: 14px;
   font-weight: 510;
   line-height: normal;
+  overflow: hidden;
+  text-overflow: ellipsis;
+  white-space: nowrap;
 }
 
 .document-chat-response-add-button {
   display: flex;
-  width: 260px;
+  width: 100%; /* Make it responsive to container width */
+  min-width: 200px; /* Minimum width to preserve text layout */
   height: 32px;
   padding: 6px 12px;
   justify-content: center;
@@ -307,10 +390,11 @@
 .document-chat-response-conversation {
   display: flex;
   flex-direction: column;
-  padding-top: 10px;
-  width: 775px;
+  flex-basis: 72.4%; /* Convert remaining space to percentage (819/1131 ≈ 72.4%) */
+  min-width: 0; /* Allow flex item to shrink below content size */
   height: 100%;
-  margin-left: 79px;
+  margin-left: 0;
+  flex: 1;
 }
 
 .document-chat-response-conversation-main {
@@ -377,15 +461,7 @@
   opacity: 1;
 }
 
-/* Conversation Section */
-.document-chat-response-conversation {
-  display: flex;
-  flex-direction: column;
-  padding-top: 10px;
-  width: 775px;
-  height: 100%;
-  margin-left: 79px;
-}
+/* Conversation Section - Remove duplicate rule that conflicts with responsive design */
 
 .document-chat-response-conversation-groups {
   display: flex;
@@ -456,7 +532,7 @@
 /* Input Section */
 .document-chat-response-input-section {
   width: 100%;
-  margin-top: 9px;
+  margin-top: 0; /* Remove extra margin so input box sits at the bottom */
   flex-shrink: 0; /* Prevent input section from shrinking */
 }
 
@@ -573,12 +649,15 @@
     align-items: center;
     gap: 20px;
     height: 100%;
+    max-width: 900px; /* Reduce max-width for better fit */
   }
   
   .document-chat-response-file-list {
+    flex-basis: auto;
     width: 100%;
     max-width: 400px;
     flex-shrink: 0;
+    min-width: auto;
   }
   
   .document-chat-response-add-button {
@@ -587,18 +666,32 @@
   }
   
   .document-chat-response-conversation {
+    flex-basis: auto;
     width: 100%;
     max-width: 600px;
     margin-left: 0;
     flex: 1;
+    min-width: auto;
   }
 }
 
 @media (max-width: 768px) {
+  .document-chat-response-content {
+    max-width: 100%;
+    padding: 0 18px; /* Increased horizontal padding for better spacing */
+  }
+  
   .document-chat-response-file-list {
     width: 100%;
     max-width: 300px;
     flex-shrink: 0;
+    padding-top: 24px; /* Reduce top padding on mobile */
+  }
+  
+  .document-chat-response-file-list.collapsed {
+    flex-basis: 32px;
+    min-width: 32px;
+    max-width: 32px;
   }
   
   .document-chat-response-add-button {
@@ -611,5 +704,21 @@
     max-width: 400px;
     margin-left: 0;
     flex: 1;
+  }
+}
+
+@media (max-width: 480px) {
+  .document-chat-response-content {
+    padding: 0 16px; /* Increased padding for better spacing on small screens */
+    gap: 16px; /* Reduce gap for mobile */
+  }
+  
+  .document-chat-response-file-list {
+    max-width: 100%;
+    padding-top: 16px;
+  }
+  
+  .document-chat-response-conversation {
+    max-width: 100%;
   }
 }

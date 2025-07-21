@@ -1,9 +1,13 @@
 import React, { useEffect, useRef, useState } from 'react';
+import { useTabContext } from '../../../workspaceFrame/TabContext';
 import './DocumentChatResponse.css';
 
 interface DocumentChatResponseProps {
   isSplit?: boolean;
   onBack?: () => void;
+  tabIdx?: number;
+  pageIdx?: number;
+  screenId?: string;
 }
 
 interface FileItem {
@@ -13,10 +17,12 @@ interface FileItem {
   checked: boolean;
 }
 
-const DocumentChatResponse: React.FC<DocumentChatResponseProps> = ({ isSplit = false, onBack }) => {
+const DocumentChatResponse: React.FC<DocumentChatResponseProps> = ({ isSplit = false, onBack, tabIdx = 0, pageIdx = 0, screenId = '' }) => {
+  const { switchToDocumentChat } = useTabContext();
   const conversationMainRef = useRef<HTMLDivElement>(null);
   const scrollbarThumbRef = useRef<HTMLDivElement>(null);
   const [isScrolling, setIsScrolling] = useState(false);
+  const [isReferenceListCollapsed, setIsReferenceListCollapsed] = useState(false);
 
   // File selection state
   const [files, setFiles] = useState<FileItem[]>([
@@ -29,7 +35,11 @@ const DocumentChatResponse: React.FC<DocumentChatResponseProps> = ({ isSplit = f
 
   const handleBackClick = () => {
     // Navigate back to document chat entry page
-    onBack?.();
+    switchToDocumentChat(pageIdx, screenId, tabIdx);
+  };
+
+  const handleToggleReferenceList = () => {
+    setIsReferenceListCollapsed(!isReferenceListCollapsed);
   };
 
   // Handle Select All checkbox
@@ -257,7 +267,7 @@ const DocumentChatResponse: React.FC<DocumentChatResponseProps> = ({ isSplit = f
       <div className="document-chat-response-main">
         <div className="document-chat-response-content">
           {/* File List Section */}
-          <div className="document-chat-response-file-list">
+          <div className={`document-chat-response-file-list ${isReferenceListCollapsed ? 'collapsed' : ''}`}>
             <div className="document-chat-response-file-list-content">
               {/* List Header */}
               <div className="document-chat-response-file-list-header">
@@ -309,6 +319,36 @@ const DocumentChatResponse: React.FC<DocumentChatResponseProps> = ({ isSplit = f
               />
               <span className="document-chat-response-add-text">
                 Add New References
+              </span>
+            </button>
+
+            {/* Collapse/Expand Toggle Button */}
+            <button 
+              className="document-chat-response-toggle-button"
+              onClick={handleToggleReferenceList}
+              aria-label={isReferenceListCollapsed ? "Expand reference list" : "Collapse reference list"}
+            >
+              <svg
+                className="document-chat-response-toggle-icon"
+                width="16"
+                height="16"
+                viewBox="0 0 24 24"
+                fill="none"
+                stroke="currentColor"
+                strokeWidth="2"
+                strokeLinecap="round"
+                strokeLinejoin="round"
+              >
+                {isReferenceListCollapsed ? (
+                  /* Chevron right for expand */
+                  <polyline points="9 18 15 12 9 6" />
+                ) : (
+                  /* Chevron left for collapse */
+                  <polyline points="15 18 9 12 15 6" />
+                )}
+              </svg>
+              <span className="document-chat-response-toggle-text">
+                {isReferenceListCollapsed ? "Show References" : "Hide References"}
               </span>
             </button>
           </div>

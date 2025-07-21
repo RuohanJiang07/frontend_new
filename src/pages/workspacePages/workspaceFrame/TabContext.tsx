@@ -3,7 +3,9 @@ import { createContext, useContext, useState, ReactNode } from 'react';
 import AiPoweredTools from '@/pages/workspacePages/contents/default/tabPanel/AiPoweredTools';
 import DeepLearnEntry from '@/pages/workspacePages/contents/DeepLearn/entry/DeepLearn';
 import DocumentChatEntry from '@/pages/workspacePages/contents/DocumentChat/entry/DocumentChat';
+import DocumentChatResponse from '@/pages/workspacePages/contents/DocumentChat/response/DocumentChatResponse';
 import ProblemHelpEntry from '@/pages/workspacePages/contents/ProblemHelp/entry/ProblemHelp';
+import NoteEntry from '@/pages/workspacePages/contents/Note/entry/Note';
 
 // New screen object interface
 export interface ScreenObject {
@@ -42,12 +44,26 @@ interface TabContextType {
     getScreenById: (pageIdx: number, screenId: string) => ScreenObject | undefined;
     getActiveScreens: (pageIdx: number) => ScreenObject[];
     
+    // Active screen and tab tracking
+    activeScreenId: string | null;
+    setActiveScreenId: (screenId: string | null) => void;
+    activeTabIndices: Record<number, Record<string, number>>; // pageIdx -> (screenId -> active tab index)
+    setActiveTabIndex: (screenId: string, tabIndex: number) => void;
+    
     // New method to switch to DeepLearn
-    switchToDeepLearn: (pageIdx: number, screenId: string) => void;
+    switchToDeepLearn: (pageIdx: number, screenId: string, tabIdx: number) => void;
     // New method to switch to DocumentChat
-    switchToDocumentChat: (pageIdx: number, screenId: string) => void;
+    switchToDocumentChat: (pageIdx: number, screenId: string, tabIdx: number) => void;
+    // New method to switch to DocumentChatResponse
+    switchToDocumentChatResponse: (pageIdx: number, screenId: string, tabIdx: number) => void;
     // New method to switch to ProblemHelp
-    switchToProblemHelp: (pageIdx: number, screenId: string) => void;
+    switchToProblemHelp: (pageIdx: number, screenId: string, tabIdx: number) => void;
+    // New method to switch to Note
+    switchToNote: (pageIdx: number, screenId: string, tabIdx: number) => void;
+    
+    // Helper methods for UI state
+    canClosePage: (pageIdx: number) => boolean;
+    canCloseTab: (pageIdx: number, screenId: string, tabIdx: number) => boolean;
 }
 
 const TabContext = createContext<TabContextType>({
@@ -64,9 +80,17 @@ const TabContext = createContext<TabContextType>({
     toggleFullscreen: () => { },
     getScreenById: () => undefined,
     getActiveScreens: () => [],
+    activeScreenId: null,
+    setActiveScreenId: () => { },
+    activeTabIndices: {},
+    setActiveTabIndex: () => { },
     switchToDeepLearn: () => { },
     switchToDocumentChat: () => { },
+    switchToDocumentChatResponse: () => { },
     switchToProblemHelp: () => { },
+    switchToNote: () => { },
+    canClosePage: () => false,
+    canCloseTab: () => false,
 } as TabContextType);
 
 export const useTabContext = () => {
@@ -103,6 +127,8 @@ export const TabProvider = ({ children }: { children: ReactNode }) => {
         }
     ]);
     const [activePage, setActivePage] = useState(0);
+    const [activeScreenId, setActiveScreenId] = useState<string | null>('screen-1');
+    const [activeTabIndices, setActiveTabIndices] = useState<Record<number, Record<string, number>>>({ 0: { 'screen-1': 0 } });
 
     // Helper function to generate unique screen ID
     const generateScreenId = (pageIdx: number) => {
@@ -117,6 +143,7 @@ export const TabProvider = ({ children }: { children: ReactNode }) => {
 
     // Add a new page
     const addPage = (title: string) => {
+        const newPageIdx = pages.length;
         setPages(prev => [
             ...prev,
             {
@@ -132,17 +159,35 @@ export const TabProvider = ({ children }: { children: ReactNode }) => {
                 ]
             }
         ]);
-        setActivePage(pages.length);
+        setActivePage(newPageIdx);
+        // Initialize active tab indices for the new page
+        setActiveTabIndices(prev => ({
+            ...prev,
+            [newPageIdx]: { 'screen-1': 0 }
+        }));
+        setActiveScreenId('screen-1');
     };
 
     // Close a page
     const closePage = (idx: number) => {
+        // Prevent closing the last window
+        if (pages.length <= 1) {
+            return;
+        }
+        
         setPages(prev => {
             const newPages = prev.filter((_, i) => i !== idx);
             if (activePage >= newPages.length) {
                 setActivePage(Math.max(0, newPages.length - 1));
             }
             return newPages;
+        });
+        
+        // Clean up active tab indices for the closed page
+        setActiveTabIndices(prev => {
+            const newIndices = { ...prev };
+            delete newIndices[idx];
+            return newIndices;
         });
     };
 
@@ -173,6 +218,13 @@ export const TabProvider = ({ children }: { children: ReactNode }) => {
     const removeTab = (pageIdx: number, screenId: string, tabIdx: number) => {
         setPages(prev => prev.map((page, idx) => {
             if (idx !== pageIdx) return page;
+            
+            // Check if this is the last tab in the entire window (all screens combined)
+            const totalTabsInWindow = page.screenQueue.reduce((total, screen) => total + screen.tabList.length, 0);
+            if (totalTabsInWindow <= 1) {
+                return page; // Don't remove the last tab
+            }
+            
             return {
                 ...page,
                 screenQueue: page.screenQueue.map(screen =>
@@ -194,6 +246,10 @@ export const TabProvider = ({ children }: { children: ReactNode }) => {
             
             if (currentScreens.length === 1) {
                 // Single screen becomes split-left, new screen becomes split-right
+                // Set the new screen as active
+                setActiveScreenId(newScreenId);
+                setActiveTabIndex(newScreenId, 0);
+                
                 return {
                     ...page,
                     screenQueue: [
@@ -214,6 +270,10 @@ export const TabProvider = ({ children }: { children: ReactNode }) => {
                     if (index === 1) return { ...screen, state: 'split-right' as const };
                     return screen; // Keep other screens as they are
                 });
+                
+                // Set the new screen as active
+                setActiveScreenId(newScreenId);
+                setActiveTabIndex(newScreenId, 0);
                 
                 return {
                     ...page,
@@ -241,13 +301,34 @@ export const TabProvider = ({ children }: { children: ReactNode }) => {
             // const screenToRemove = currentScreens.find(screen => screen.id === screenId);
             const remainingScreens = currentScreens.filter(screen => screen.id !== screenId);
             
+            // If we're closing the active screen, switch to the first remaining screen
+            if (activeScreenId === screenId && remainingScreens.length > 0) {
+                setActiveScreenId(remainingScreens[0].id);
+                setActiveTabIndex(remainingScreens[0].id, 0);
+            }
+            
+            // Clean up active tab indices for the closed screen
+            setActiveTabIndices(prev => {
+                const newIndices = { ...prev };
+                if (newIndices[pageIdx]) {
+                    const newPageIndices = { ...newIndices[pageIdx] };
+                    delete newPageIndices[screenId];
+                    newIndices[pageIdx] = newPageIndices;
+                }
+                return newIndices;
+            });
+            
             if (remainingScreens.length === 0) {
                 // No screens left, create a default one
+                const newScreenId = 'screen-1';
+                setActiveScreenId(newScreenId);
+                setActiveTabIndex(newScreenId, 0);
+                
                 return {
                     ...page,
                     screenQueue: [
                         {
-                            id: 'screen-1',
+                            id: newScreenId,
                             tabList: [
                                 { tab: "Tab1-1", components: <AiPoweredTools />, tabList: [] },
                             ],
@@ -338,125 +419,135 @@ export const TabProvider = ({ children }: { children: ReactNode }) => {
     };
 
     // New method to switch to DeepLearn
-    const switchToDeepLearn = (pageIdx: number, screenId: string) => {
+    const switchToDeepLearn = (pageIdx: number, screenId: string, tabIdx: number) => {
         setPages(prev => prev.map((page, idx) => {
             if (idx !== pageIdx) return page;
-            
-            const currentScreens = page.screenQueue;
-            const targetScreen = currentScreens.find(screen => screen.id === screenId);
-            
-            if (!targetScreen) return page;
-
-            // Check if already showing DeepLearn
-            const isAlreadyDeepLearn = targetScreen.tabList.some(tab => 
-                tab.tab === "Deep Learn"
-            );
-            
-            if (isAlreadyDeepLearn) {
-                return page;
-            }
-
-            // Replace the first tab with DeepLearn
             return {
                 ...page,
-                screenQueue: currentScreens.map(screen => {
-                    if (screen.id === screenId) {
-                        return {
-                            ...screen,
-                            tabList: [
-                                { 
-                                    tab: "Deep Learn", 
-                                    components: <DeepLearnEntry />, 
-                                    tabList: [] 
-                                }
-                            ]
-                        };
-                    }
-                    return screen;
+                screenQueue: page.screenQueue.map(screen => {
+                    if (screen.id !== screenId) return screen;
+                    const newTabList = screen.tabList.map((tab, i) =>
+                        i === tabIdx
+                            ? { ...tab, tab: "Deep Learn", components: <DeepLearnEntry /> }
+                            : tab
+                    );
+                    return { ...screen, tabList: newTabList };
                 })
             };
         }));
     };
 
     // New method to switch to DocumentChat
-    const switchToDocumentChat = (pageIdx: number, screenId: string) => {
+    const switchToDocumentChat = (pageIdx: number, screenId: string, tabIdx: number) => {
         setPages(prev => prev.map((page, idx) => {
             if (idx !== pageIdx) return page;
-            
-            const currentScreens = page.screenQueue;
-            const targetScreen = currentScreens.find(screen => screen.id === screenId);
-            
-            if (!targetScreen) return page;
-
-            // Check if already showing DocumentChat
-            const isAlreadyDocumentChat = targetScreen.tabList.some(tab => 
-                tab.tab === "Document Chat"
-            );
-            
-            if (isAlreadyDocumentChat) {
-                return page;
-            }
-
-            // Replace the first tab with DocumentChat
             return {
                 ...page,
-                screenQueue: currentScreens.map(screen => {
-                    if (screen.id === screenId) {
-                        return {
-                            ...screen,
-                            tabList: [
-                                { 
-                                    tab: "Document Chat", 
-                                    components: <DocumentChatEntry />, 
-                                    tabList: [] 
-                                }
-                            ]
-                        };
-                    }
-                    return screen;
+                screenQueue: page.screenQueue.map(screen => {
+                    if (screen.id !== screenId) return screen;
+                    const newTabList = screen.tabList.map((tab, i) =>
+                        i === tabIdx
+                            ? { ...tab, tab: "Document Chat", components: <DocumentChatEntry /> }
+                            : tab
+                    );
+                    return { ...screen, tabList: newTabList };
+                })
+            };
+        }));
+    };
+
+    // New method to switch to DocumentChatResponse
+    const switchToDocumentChatResponse = (pageIdx: number, screenId: string, tabIdx: number) => {
+        setPages(prev => prev.map((page, idx) => {
+            if (idx !== pageIdx) return page;
+            return {
+                ...page,
+                screenQueue: page.screenQueue.map(screen => {
+                    if (screen.id !== screenId) return screen;
+                    const newTabList = screen.tabList.map((tab, i) =>
+                        i === tabIdx
+                            ? { ...tab, tab: "Document Chat Response", components: <DocumentChatResponse /> }
+                            : tab
+                    );
+                    return { ...screen, tabList: newTabList };
                 })
             };
         }));
     };
 
     // New method to switch to ProblemHelp
-    const switchToProblemHelp = (pageIdx: number, screenId: string) => {
+    const switchToProblemHelp = (pageIdx: number, screenId: string, tabIdx: number) => {
         setPages(prev => prev.map((page, idx) => {
             if (idx !== pageIdx) return page;
-            
-            const currentScreens = page.screenQueue;
-            const targetScreen = currentScreens.find(screen => screen.id === screenId);
-            
-            if (!targetScreen) return page;
-
-            // Check if already showing ProblemHelp
-            const isAlreadyProblemHelp = targetScreen.tabList.some(tab => 
-                tab.tab === "Problem Help"
-            );
-            
-            if (isAlreadyProblemHelp) {
-                return page;
-            }
-
-            // Replace the first tab with ProblemHelp
             return {
                 ...page,
-                screenQueue: currentScreens.map(screen => {
-                    if (screen.id === screenId) {
-                        return {
-                            ...screen,
-                            tabList: [
-                                { 
-                                    tab: "Problem Help", 
-                                    components: <ProblemHelpEntry />, 
-                                    tabList: [] 
-                                }
-                            ]
-                        };
-                    }
-                    return screen;
+                screenQueue: page.screenQueue.map(screen => {
+                    if (screen.id !== screenId) return screen;
+                    const newTabList = screen.tabList.map((tab, i) =>
+                        i === tabIdx
+                            ? { ...tab, tab: "Problem Help", components: <ProblemHelpEntry /> }
+                            : tab
+                    );
+                    return { ...screen, tabList: newTabList };
                 })
             };
+        }));
+    };
+
+    // New method to switch to Note
+    const switchToNote = (pageIdx: number, screenId: string, tabIdx: number) => {
+        setPages(prev => prev.map((page, idx) => {
+            if (idx !== pageIdx) return page;
+            return {
+                ...page,
+                screenQueue: page.screenQueue.map(screen => {
+                    if (screen.id !== screenId) return screen;
+                    const newTabList = screen.tabList.map((tab, i) =>
+                        i === tabIdx
+                            ? { ...tab, tab: "Smart Note", components: <NoteEntry /> }
+                            : tab
+                    );
+                    return { ...screen, tabList: newTabList };
+                })
+            };
+        }));
+    };
+
+    // Helper method to check if a page can be closed
+    const canClosePage = (pageIdx: number) => {
+        return pages.length > 1;
+    };
+
+    // Helper method to check if a tab can be closed
+    const canCloseTab = (pageIdx: number, screenId: string, tabIdx: number) => {
+        const page = pages[pageIdx];
+        if (!page) return false;
+        
+        // Check if this is the last tab in the entire window (all screens combined)
+        const totalTabsInWindow = page.screenQueue.reduce((total, screen) => total + screen.tabList.length, 0);
+        if (totalTabsInWindow <= 1) {
+            return false; // Don't allow closing the last tab in the entire window
+        }
+        
+        // Check if this is the last tab in the specific screen
+        const targetScreen = page.screenQueue.find(screen => screen.id === screenId);
+        if (targetScreen && targetScreen.tabList.length <= 1) {
+            // Allow closing the last tab in a screen if there are multiple screens
+            // (it will trigger split screen closing)
+            return page.screenQueue.length > 1;
+        }
+        
+        return true;
+    };
+
+    // Helper method to set active tab index for a screen
+    const setActiveTabIndex = (screenId: string, tabIndex: number) => {
+        setActiveTabIndices(prev => ({
+            ...prev,
+            [activePage]: {
+                ...(prev[activePage] || {}),
+                [screenId]: tabIndex
+            }
         }));
     };
 
@@ -476,9 +567,17 @@ export const TabProvider = ({ children }: { children: ReactNode }) => {
                 toggleFullscreen,
                 getScreenById,
                 getActiveScreens,
+                activeScreenId,
+                setActiveScreenId,
+                activeTabIndices,
+                setActiveTabIndex,
                 switchToDeepLearn,
                 switchToDocumentChat,
+                switchToDocumentChatResponse,
                 switchToProblemHelp,
+                switchToNote,
+                canClosePage,
+                canCloseTab,
             }}
         >
             {children}

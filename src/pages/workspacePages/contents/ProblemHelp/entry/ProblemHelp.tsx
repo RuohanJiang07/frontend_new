@@ -70,13 +70,19 @@ const SAMPLE_HISTORY = [
   }
 ];
 
+import { useTabContext } from '../../../workspaceFrame/TabContext';
+
 interface ProblemHelpProps {
   isSplit?: boolean;
   onBack?: () => void;
   onViewChange?: (view: string | null) => void;
+  tabIdx?: number;
+  pageIdx?: number;
+  screenId?: string;
 }
 
-function ProblemHelp({ isSplit = false, onBack, onViewChange }: ProblemHelpProps) {
+function ProblemHelp({ isSplit = false, onBack, onViewChange, tabIdx = 0, pageIdx = 0, screenId = '' }: ProblemHelpProps) {
+  const { switchToProblemHelp } = useTabContext();
   const [inputValue, setInputValue] = useState('');
   const [isInputFocused, setIsInputFocused] = useState(false);
   const [profileSelected, setProfileSelected] = useState(false);
@@ -113,7 +119,7 @@ function ProblemHelp({ isSplit = false, onBack, onViewChange }: ProblemHelpProps
     localStorage.setItem(`problemhelp_conversation_${tabId}`, `history-${historyItem.id}`);
     
     // Navigate to the response page
-    onViewChange?.('problem-help-response');
+    switchToProblemHelp(pageIdx, screenId, tabIdx);
   };
 
   // Filter history based on search query

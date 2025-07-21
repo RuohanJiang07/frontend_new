@@ -1,5 +1,6 @@
 import React from 'react';
 import { useState } from 'react';
+import { useTabContext } from '../../../workspaceFrame/TabContext';
 import './DocumentChat.css';
 
 // Sample history data
@@ -66,9 +67,13 @@ interface DocumentChatProps {
   isSplit?: boolean;
   onBack?: () => void;
   onViewChange?: (view: string | null) => void;
+  tabIdx?: number;
+  pageIdx?: number;
+  screenId?: string;
 }
 
-function DocumentChat({ isSplit = false, onBack, onViewChange }: DocumentChatProps) {
+function DocumentChat({ isSplit = false, onBack, onViewChange, tabIdx = 0, pageIdx = 0, screenId = '' }: DocumentChatProps) {
+  const { switchToDocumentChatResponse } = useTabContext();
   const [isUploadHovered, setIsUploadHovered] = useState(false);
   const [selectedReferences, setSelectedReferences] = useState<string[]>([]);
   const [profileSelected, setProfileSelected] = useState(false);
@@ -81,6 +86,14 @@ function DocumentChat({ isSplit = false, onBack, onViewChange }: DocumentChatPro
 
   const toggleProfile = () => {
     setProfileSelected(!profileSelected);
+  };
+
+  const handleStartConversation = () => {
+    switchToDocumentChatResponse(pageIdx, screenId, tabIdx);
+  };
+
+  const handleHistoryCardClick = (item: any) => {
+    switchToDocumentChatResponse(pageIdx, screenId, tabIdx);
   };
 
   return (
@@ -154,10 +167,7 @@ function DocumentChat({ isSplit = false, onBack, onViewChange }: DocumentChatPro
             <div className="document-chat-start-button-container">
               <button 
                 className="document-chat-start-button"
-                onClick={() => {
-                  // Navigate to document chat response page
-                  onViewChange?.('document-chat-response');
-                }}
+                onClick={handleStartConversation}
                 title="Start Conversation"
               >
                 <span className="document-chat-start-text">Start</span>
@@ -207,10 +217,7 @@ function DocumentChat({ isSplit = false, onBack, onViewChange }: DocumentChatPro
           <div 
             key={item.id} 
             className="document-chat-card cursor-pointer hover:shadow-md transition-shadow"
-            onClick={() => {
-              // Navigate to document chat response page
-              onViewChange?.('document-chat-response');
-            }}
+            onClick={() => handleHistoryCardClick(item)}
           >
             <div className="document-chat-card-title">
               {item.title}

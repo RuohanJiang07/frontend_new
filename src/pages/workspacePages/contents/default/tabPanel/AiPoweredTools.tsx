@@ -36,28 +36,29 @@ const aiTools = [
 
 const driveFolders = Array(9).fill("Lecture 1");
 
-const AiPoweredTools: React.FC = () => {
-    const { activePage, getActiveScreens, switchToDeepLearn, switchToDocumentChat, switchToProblemHelp } = useTabContext();
+interface AiPoweredToolsProps {
+    tabIdx?: number;
+    pageIdx?: number;
+    screenId?: string;
+}
+
+const AiPoweredTools: React.FC<AiPoweredToolsProps> = ({ tabIdx = 0, pageIdx = 0, screenId = '' }) => {
+    const { switchToDeepLearn, switchToDocumentChat, switchToProblemHelp, switchToNote } = useTabContext();
 
     const handleDeepLearnClick = () => {
-        const activeScreens = getActiveScreens(activePage);
-        if (activeScreens.length > 0) {
-            switchToDeepLearn(activePage, activeScreens[0].id);
-        }
+        switchToDeepLearn(pageIdx, screenId, tabIdx);
     };
 
     const handleDocumentChatClick = () => {
-        const activeScreens = getActiveScreens(activePage);
-        if (activeScreens.length > 0) {
-            switchToDocumentChat(activePage, activeScreens[0].id);
-        }
+        switchToDocumentChat(pageIdx, screenId, tabIdx);
     };
 
     const handleProblemHelpClick = () => {
-        const activeScreens = getActiveScreens(activePage);
-        if (activeScreens.length > 0) {
-            switchToProblemHelp(activePage, activeScreens[0].id);
-        }
+        switchToProblemHelp(pageIdx, screenId, tabIdx);
+    };
+
+    const handleSmartNoteClick = () => {
+        switchToNote(pageIdx, screenId, tabIdx);
     };
 
     return (
@@ -75,12 +76,13 @@ const AiPoweredTools: React.FC = () => {
                             <div
                                 key={tool.title}
                                 className={`flex flex-col items-start w-[9.5rem] h-[131px] bg-[#F8F8F8] rounded-[14px] shadow-[0_3px_13px_0_rgba(0,0,0,0.07)] border border-[#ececec] px-3 py-4 relative ${
-                                    tool.title === "Deep Learn" || tool.title === "Document Chat" || tool.title === "Problem Help" ? "cursor-pointer hover:shadow-[0_5px_16px_0_rgba(0,0,0,0.1)] transition-shadow duration-200" : ""
+                                    tool.title === "Deep Learn" || tool.title === "Document Chat" || tool.title === "Problem Help" || tool.title === "Smart Note" ? "cursor-pointer hover:shadow-[0_5px_16px_0_rgba(0,0,0,0.1)] transition-shadow duration-200" : ""
                                 }`}
                                 onClick={
                                     tool.title === "Deep Learn" ? handleDeepLearnClick : 
                                     tool.title === "Document Chat" ? handleDocumentChatClick : 
                                     tool.title === "Problem Help" ? handleProblemHelpClick :
+                                    tool.title === "Smart Note" ? handleSmartNoteClick :
                                     undefined
                                 }
                             >

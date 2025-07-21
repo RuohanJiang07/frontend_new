@@ -7,7 +7,7 @@ import { Avatar, AvatarImage, AvatarFallback } from '@radix-ui/react-avatar';
 
 import { useNavigate } from 'react-router-dom';
 import { useTabContext } from './TabContext';
-import { useState } from 'react';
+import { useState, useEffect, useRef } from 'react';
 import { createPortal } from 'react-dom';
 
 const TAB_WIDTH = 148;
@@ -20,6 +20,7 @@ export default function WorkspaceHeader() {
         addPage,
         renamePage,
         closePage,
+        canClosePage,
     } = useTabContext();
     const navigate = useNavigate();
     // 控制菜单显示
@@ -28,6 +29,7 @@ export default function WorkspaceHeader() {
     const [editValue, setEditValue] = useState('');
     const [tabScroll, setTabScroll] = useState(0);
     const [menuPosition, setMenuPosition] = useState({ top: 0, left: 0 });
+    const menuRef = useRef<HTMLDivElement>(null);
     // 可见tab数量
     const VISIBLE_COUNT = 3;
     const canScrollLeft = tabScroll > 0;
@@ -59,6 +61,23 @@ export default function WorkspaceHeader() {
     const handleLoginClick = () => {
         navigate('/login');
     };
+
+    // Handle clicking outside the menu to close it
+    useEffect(() => {
+        const handleClickOutside = (event: MouseEvent) => {
+            if (menuRef.current && !menuRef.current.contains(event.target as Node)) {
+                setMenuIdx(null);
+            }
+        };
+
+        if (menuIdx !== null) {
+            document.addEventListener('mousedown', handleClickOutside);
+        }
+
+        return () => {
+            document.removeEventListener('mousedown', handleClickOutside);
+        };
+    }, [menuIdx]);
 
     return (
         <div className="w-full flex items-center px-6 py-2 pt-3">
@@ -139,6 +158,7 @@ export default function WorkspaceHeader() {
                                                 </button>
                                                 {menuIdx === idx && createPortal(
                                                     <div
+                                                        ref={menuRef}
                                                         className="absolute top-7 left-1 z-50 w-24 bg-white border rounded shadow py-1 px-1 text-sm"
                                                         style={{
                                                             position: 'fixed',
@@ -164,10 +184,16 @@ export default function WorkspaceHeader() {
                                                             Rename
                                                         </div>
                                                         <div
-                                                            className="px-3 py-1 hover:bg-[#f7f6f6] cursor-pointer text-red-500 rounded"
+                                                            className={`px-3 py-1 rounded ${
+                                                                canClosePage(realIdx) 
+                                                                    ? 'hover:bg-[#f7f6f6] cursor-pointer text-red-500' 
+                                                                    : 'text-gray-400 cursor-not-allowed'
+                                                            }`}
                                                             onClick={e => {
                                                                 e.stopPropagation();
-                                                                handleClosePage(realIdx);
+                                                                if (canClosePage(realIdx)) {
+                                                                    handleClosePage(realIdx);
+                                                                }
                                                             }}
                                                         >
                                                             Delete
