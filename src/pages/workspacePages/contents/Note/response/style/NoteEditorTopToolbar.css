@@ -113,6 +113,8 @@
 .collapsible-content {
   transition: all 0.3s ease-in-out;
   overflow: hidden;
+  width: 100%;
+  max-width: 100%;
 }
 
 .collapsible-content.collapsed {
@@ -152,83 +154,10 @@
   justify-content: center;
   margin-bottom: 8px;
   width: 100%;
+  max-width: 100%;
+  transition: all 0.3s ease-in-out;
 }
 
-/* Responsive adjustments for smaller screens */
-@media (max-width: 1200px) {
-  .collapsible-content {
-    width: 98%;
-    max-width: 800px;
-  }
-  
-  .toolbar-container {
-    width: 98%;
-    max-width: 800px;
-  }
-}
-
-@media (max-width: 768px) {
-  .collapsible-content {
-    width: 100%;
-    max-width: 100%;
-    padding: 0 16px;
-  }
-  
-  .toolbar-container {
-    width: 100%;
-    max-width: 100%;
-    padding: 0 16px;
-  }
-  
-  .note-title {
-    font-size: 18px;
-  }
-  
-  .last-saved-container {
-    font-size: 14px;
-  }
-  
-  .author-name {
-    font-size: 12px;
-  }
-  
-  .created-date-box {
-    font-size: 12px;
-  }
-  
-  .note-label {
-    font-size: 10px;
-    padding: 3px 6px;
-  }
-}
-
-@media (max-width: 480px) {
-  .collapsible-content {
-    padding: 0 12px;
-  }
-  
-  .toolbar-container {
-    padding: 0 12px;
-  }
-  
-  .note-title {
-    font-size: 16px;
-  }
-  
-  .last-saved-container {
-    font-size: 12px;
-  }
-  
-  .author-name {
-    font-size: 11px;
-  }
-  
-  .created-date-box {
-    font-size: 11px;
-  }
-  
-  .note-label {
-    font-size: 9px;
-    padding: 2px 5px;
-  }
+.toolbar-inner {
+  transition: all 0.3s ease-in-out;
 }

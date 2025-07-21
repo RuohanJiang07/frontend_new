@@ -1,4 +1,5 @@
 import React, { useState } from 'react';
+import { useEffect, useRef } from 'react';
 import './style/NoteEditorTopToolbar.css';
 import { 
   Undo2, 
@@ -26,9 +27,10 @@ interface NoteEditorTopToolbarProps {
   editor?: any;
   onZoomIn?: () => void;
   onZoomOut?: () => void;
+  isInSplitMode?: boolean;
 }
 
-function NoteEditorTopToolbar({ onBack, editor, onZoomIn, onZoomOut }: NoteEditorTopToolbarProps) {
+function NoteEditorTopToolbar({ onBack, editor, onZoomIn, onZoomOut, isInSplitMode = false }: NoteEditorTopToolbarProps) {
   const [isCollapsed, setIsCollapsed] = useState(false);
 
   // Function to handle bold formatting
@@ -79,7 +81,13 @@ function NoteEditorTopToolbar({ onBack, editor, onZoomIn, onZoomOut }: NoteEdito
   return (
     <div className="flex flex-col items-center" style={{ paddingTop: '40px' }}>
       {/* Collapsible content */}
-      <div className={`collapsible-content ${isCollapsed ? 'collapsed' : 'expanded'} w-full max-w-[800px] mx-auto`}>
+      <div 
+        className={`collapsible-content ${isCollapsed ? 'collapsed' : 'expanded'} w-full mx-auto`}
+        style={{
+          maxWidth: isInSplitMode ? '600px' : '800px',
+          width: '100%'
+        }}
+      >
         {/* Header with title and icon - centered at 50% width */}
         <div className="flex flex-col items-start w-full">
           {/* Note icon, title, and share button - all in one row */}
@@ -97,7 +105,7 @@ function NoteEditorTopToolbar({ onBack, editor, onZoomIn, onZoomOut }: NoteEdito
                 <svg width="16" height="16" viewBox="0 0 24 24" fill="none" xmlns="http://www.w3.org/2000/svg">
                   <path d="M18 8C19.6569 8 21 6.65685 21 5C21 3.34315 19.6569 2 18 2C16.3431 2 15 3.34315 15 5C15 5.12548 15.0077 5.24917 15.0227 5.37061L8.08261 9.84066C7.54305 9.32015 6.80891 9 6 9C4.34315 9 3 10.3431 3 12C3 13.6569 4.34315 15 6 15C6.80891 15 7.54305 14.6798 8.08261 14.1593L15.0227 18.6294C15.0077 18.7508 15 18.8745 15 19C15 20.6569 16.3431 22 18 22C19.6569 22 21 20.6569 21 19C21 17.3431 19.6569 16 18 16C17.1911 16 16.457 16.3202 15.9174 16.8407L8.97733 12.3706C8.99229 12.2492 9 12.1255 9 12C9 11.8745 8.99229 11.7508 8.97733 11.6294L15.9174 7.15934C16.457 7.67985 17.1911 8 18 8Z" fill="currentColor"/>
                 </svg>
-                Share
+                <span>Share</span>
                 <svg width="16" height="16" viewBox="0 0 24 24" fill="none" xmlns="http://www.w3.org/2000/svg">
                   <path d="M6 9L12 15L18 9" stroke="currentColor" strokeWidth="2" strokeLinecap="round" strokeLinejoin="round"/>
                 </svg>
@@ -136,7 +144,15 @@ function NoteEditorTopToolbar({ onBack, editor, onZoomIn, onZoomOut }: NoteEdito
 
       {/* Toolbar with collapse button */}
       <div className="toolbar-container">
-        <div className="flex items-center gap-1 sm:gap-2 bg-[#F8F8F8] rounded-full border border-[#DFDFDF] px-2 sm:px-3 py-1.5 w-full max-w-[800px] mx-auto overflow-x-auto">
+        <div 
+          className="toolbar-inner flex items-center bg-[#F8F8F8] rounded-full border border-[#DFDFDF] py-1.5 w-full mx-auto overflow-x-auto"
+          style={{
+            gap: isInSplitMode ? '4px' : '8px',
+            padding: '6px 12px',
+            maxWidth: isInSplitMode ? '600px' : '800px',
+            transition: 'all 0.3s ease-in-out'
+          }}
+        >
           {/* Undo/Redo */}
           <button 
             className={`p-1 text-gray-600 hover:bg-gray-100 rounded-full ${editor?.isActive('undo') ? 'bg-[#DFEDFF]' : ''}`}
@@ -151,7 +167,7 @@ function NoteEditorTopToolbar({ onBack, editor, onZoomIn, onZoomOut }: NoteEdito
             <Redo2 size={20} />
           </button>
           
-          <span className="mx-2 text-gray-300">|</span>
+          {!isInSplitMode && <span className="mx-2 text-gray-300">|</span>}
           
           {/* Bold, Italic, Underline, Strikethrough */}
           <button 
@@ -179,7 +195,7 @@ function NoteEditorTopToolbar({ onBack, editor, onZoomIn, onZoomOut }: NoteEdito
             <Strikethrough size={20} />
           </button>
           
-          <span className="mx-2 text-gray-300">|</span>
+          {!isInSplitMode && <span className="mx-2 text-gray-300">|</span>}
           
           {/* Lists */}
           <button 
@@ -198,22 +214,22 @@ function NoteEditorTopToolbar({ onBack, editor, onZoomIn, onZoomOut }: NoteEdito
             <AlignLeft size={20} />
           </button>
           
-          <span className="mx-2 text-gray-300">|</span>
+          {!isInSplitMode && <span className="mx-2 text-gray-300">|</span>}
           
           {/* Link, Code, Mention, Emoji, Image, Video */}
-          <button className="p-1 text-gray-600 hover:bg-gray-100 rounded-full">
+          <button className={`p-1 text-gray-600 hover:bg-gray-100 rounded-full ${isInSplitMode ? 'hidden' : ''}`}>
             <Link size={20} />
           </button>
-          <button className="p-1 text-gray-600 hover:bg-gray-100 rounded-full">
+          <button className={`p-1 text-gray-600 hover:bg-gray-100 rounded-full ${isInSplitMode ? 'hidden' : ''}`}>
             <Code size={20} />
           </button>
-          <button className="p-1 text-gray-600 hover:bg-gray-100 rounded-full">
+          <button className={`p-1 text-gray-600 hover:bg-gray-100 rounded-full ${isInSplitMode ? 'hidden' : ''}`}>
             <Smile size={20} />
           </button>
-          <button className="p-1 text-gray-600 hover:bg-gray-100 rounded-full">
+          <button className={`p-1 text-gray-600 hover:bg-gray-100 rounded-full ${isInSplitMode ? 'hidden' : ''}`}>
             <Image size={20} />
           </button>
-          <button className="p-1 text-gray-600 hover:bg-gray-100 rounded-full">
+          <button className={`p-1 text-gray-600 hover:bg-gray-100 rounded-full ${isInSplitMode ? 'hidden' : ''}`}>
             <Video size={20} />
           </button>
           

@@ -1,17 +1,18 @@
 .editor-container {
   display: flex;
   width: 100%;
-  max-width: 800px;
+  max-width: 100%;
   min-height: 100vh;
   background: white;
   padding: 0;
   position: relative;
   margin-top: 0px;
+  transition: all 0.3s ease-in-out;
 }
 
 .line-numbers {
   width: 50px;
-  padding: 0 10px;
+  padding: 10px 10px 0 10px;
   font-family: 'SF Mono', 'Monaco', 'Inconsolata', 'Roboto Mono', monospace;
   font-size: 14px;
   color: #9ca3af;
@@ -22,6 +23,7 @@
   background: white;
   flex-shrink: 0;
   line-height: 1.7;
+  transition: all 0.3s ease-in-out;
 }
 
 .line-number {
@@ -39,11 +41,12 @@
 
 .editor-content {
   flex: 1;
-  padding: 0 20px 0 0;
+  padding: 10px 20px 0 0;
   min-height: 100%;
   background: white;
   width: 100%;
-  max-width: 750px;
+  max-width: calc(100% - 70px); /* Account for line numbers */
+  transition: all 0.3s ease-in-out;
 }
 
 .ProseMirror {
@@ -176,102 +179,4 @@
 /* Improved scrolling behavior - allow content to scroll to middle of screen */
 .editor-scroll-container {
   padding-bottom: 50vh; /* Add padding to allow scrolling the last line to middle */
-}
-
-/* Responsive adjustments for smaller screens */
-@media (max-width: 1200px) {
-  .editor-container {
-    width: 98%;
-    max-width: 800px;
-  }
-}
-
-@media (max-width: 768px) {
-  .editor-container {
-    width: 100%;
-    max-width: 100%;
-    padding: 0 16px;
-  }
-  
-  .line-numbers {
-    width: 40px;
-    padding: 0 8px;
-    font-size: 12px;
-  }
-  
-  .line-number {
-    font-size: 12px;
-    padding: 0 6px 0 0;
-  }
-  
-  .editor-content {
-    padding: 0 15px 0 0;
-  }
-  
-  .ProseMirror {
-    font-size: 14px;
-  }
-  
-  .ProseMirror h1 {
-    font-size: 24px;
-  }
-  
-  .ProseMirror h2 {
-    font-size: 20px;
-  }
-  
-  .ProseMirror h3 {
-    font-size: 18px;
-  }
-  
-  .ProseMirror p,
-  .ProseMirror li,
-  .ProseMirror blockquote,
-  .ProseMirror pre {
-    font-size: 14px;
-  }
-}
-
-@media (max-width: 480px) {
-  .editor-container {
-    padding: 0 12px;
-  }
-  
-  .line-numbers {
-    width: 35px;
-    padding: 0 6px;
-    font-size: 11px;
-  }
-  
-  .line-number {
-    font-size: 11px;
-    padding: 0 4px 0 0;
-  }
-  
-  .editor-content {
-    padding: 0 12px 0 0;
-  }
-  
-  .ProseMirror {
-    font-size: 13px;
-  }
-  
-  .ProseMirror h1 {
-    font-size: 20px;
-  }
-  
-  .ProseMirror h2 {
-    font-size: 18px;
-  }
-  
-  .ProseMirror h3 {
-    font-size: 16px;
-  }
-  
-  .ProseMirror p,
-  .ProseMirror li,
-  .ProseMirror blockquote,
-  .ProseMirror pre {
-    font-size: 13px;
-  }
 }

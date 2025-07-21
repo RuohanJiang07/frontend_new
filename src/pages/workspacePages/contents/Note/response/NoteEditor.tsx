@@ -1,4 +1,5 @@
 import React, { useEffect, useState } from 'react';
+import { useRef } from 'react';
 import { useEditor, EditorContent, Editor } from '@tiptap/react';
 import StarterKit from '@tiptap/starter-kit';
 import Underline from '@tiptap/extension-underline';
@@ -19,10 +20,20 @@ interface NoteEditorProps {
 }
 
 function NoteEditor({ onBack, tabIdx = 0, pageIdx = 0, screenId = '' }: NoteEditorProps) {
-  const { switchToNote } = useTabContext();
+  const { switchToNote, getActiveScreens, activePage } = useTabContext();
   const [zoomLevel, setZoomLevel] = useState(1);
   const [lineCount, setLineCount] = useState(1);
   const [lineHeights, setLineHeights] = useState<number[]>([]);
+  
+  // 检测分屏模式 - 直接使用，不需要延迟
+  const activeScreens = getActiveScreens(activePage);
+  const isInSplitMode = activeScreens.length > 1 && !activeScreens.some(screen => screen.state === 'full-screen');
+  
+  // 移除之前的复杂逻辑，直接使用分屏状态
+  useEffect(() => {
+    // 这里可以添加其他需要在分屏状态改变时执行的逻辑
+    console.log('Split mode changed:', isInSplitMode);
+  }, [isInSplitMode]);
 
   const updateLineCount = (editor: Editor) => {
     const dom = editor.view.dom;
@@ -158,12 +169,22 @@ function NoteEditor({ onBack, tabIdx = 0, pageIdx = 0, screenId = '' }: NoteEdit
         editor={editor} 
         onZoomIn={handleZoomIn}
         onZoomOut={handleZoomOut}
+        isInSplitMode={isInSplitMode}
       />
       
       <div className="flex-1 relative overflow-hidden">
         <div className="flex-1 overflow-y-auto w-full h-full">
           <div className="flex justify-center w-full">
-            <div className="editor-container editor-scroll-container" style={{ transform: `scale(${zoomLevel})`, transformOrigin: 'top center' }}>
+            <div 
+              className="editor-container editor-scroll-container"
+              style={{ 
+                transform: `scale(${zoomLevel})`, 
+                transformOrigin: 'top center',
+                width: '100%',
+                maxWidth: isInSplitMode ? '600px' : '800px',
+                transition: 'all 0.3s ease-in-out'
+              }}
+            >
               <div className="line-numbers">{generateLineNumbers()}</div>
               <EditorContent editor={editor} className="editor-content" />
             </div>

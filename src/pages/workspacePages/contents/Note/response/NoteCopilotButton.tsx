@@ -198,10 +198,13 @@ function NoteCopilotButton({ className = '' }: NoteCopilotButtonProps) {
   }, [generatedNotes]);
 
   return (
-    <div className={`relative ${className}`}>
+    <div className={`relative ${className}`} style={{ 
+      maxWidth: '400px',
+      transition: 'all 0.3s ease-in-out'
+    }}>
       {/* Dropdown panel - shows when expanded */}
       {isExpanded && (
-        <div className="absolute bottom-full left-0 mb-2 w-[400px] bg-[#ECF1F6] rounded-lg p-4 shadow-lg">
+        <div className="absolute bottom-full left-0 mb-2 w-full min-w-[300px] bg-[#ECF1F6] rounded-lg p-4 shadow-lg transition-all duration-300 ease-in-out">
           {/* Audio Language */}
           <div className="flex items-center justify-between mb-4">
             <span className="text-[#6B6B6B] font-inter text-sm font-medium">
@@ -231,7 +234,7 @@ function NoteCopilotButton({ className = '' }: NoteCopilotButtonProps) {
       )}
 
       {/* Main button */}
-      <div className="bg-[#ECF1F6] rounded-lg p-3 flex items-center gap-4">
+      <div className="bg-[#ECF1F6] rounded-lg p-3 flex items-center gap-2 sm:gap-4 w-full">
         {/* Recording controls section */}
         <div className="flex items-center gap-3">
           {/* Microphone button */}
