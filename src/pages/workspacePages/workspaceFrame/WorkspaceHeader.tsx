@@ -83,7 +83,10 @@ export default function WorkspaceHeader() {
         <div className="w-full flex items-center px-6 py-2 pt-3">
             {/* 返回+课程名 */}
             <div className="flex items-center   mr-6">
-                <ArrowLeft className="w-5 h-5 cursor-pointer" />
+                <ArrowLeft 
+                    className="w-5 h-5 cursor-pointer" 
+                    onClick={() => navigate('/workspaces')}
+                />
 
                 <span className="ml-2 font-semibold text-[17px]">PHYS 2801 Physics</span>
                 <span className="ml-2 px-2 py-0.5 bg-[#e6edfa] text-xs rounded text-[#1a2a4c]">Workspace</span>
