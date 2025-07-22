@@ -2,9 +2,10 @@ import React from 'react';
 import { useState } from 'react';
 import { useTabContext } from '../../../workspaceFrame/TabContext';
 import './DocumentChat.css';
-import { getDriveFiles, DriveFileItem } from '../../../../../api/workspaces/drive/getFiles';
+import { getDriveFiles, TransformedDriveItem } from '../../../../../api/workspaces/drive/getFiles';
 import { useEffect } from 'react';
 import { useToast } from '../../../../../hooks/useToast';
+import { UploadModal } from '../../../../../components/workspacePage/uploadModal';
 
 // Interface for document tags
 interface DocumentTag {
@@ -91,8 +92,9 @@ function DocumentChat({ isSplit = false, onBack, onViewChange, tabIdx = 0, pageI
   const [profileSelected, setProfileSelected] = useState(false);
   const [searchQuery, setSearchQuery] = useState('');
   const [selectedDocuments, setSelectedDocuments] = useState<DocumentTag[]>([]);
-  const [availableFiles, setAvailableFiles] = useState<DriveFileItem[]>([]);
+  const [availableFiles, setAvailableFiles] = useState<TransformedDriveItem[]>([]);
   const [loadingFiles, setLoadingFiles] = useState(false);
+  const [isUploadModalOpen, setIsUploadModalOpen] = useState(false);
 
   // Load available files from drive when component mounts
   useEffect(() => {
@@ -104,11 +106,11 @@ function DocumentChat({ isSplit = false, onBack, onViewChange, tabIdx = 0, pageI
       setLoadingFiles(true);
       const response = await getDriveFiles();
       
-      if (response.success) {
+      if (response.success && response.data) {
         // Filter only files (not folders) and only processed files
-        const processedFiles = response.drive_files.items.filter(item => 
+        const processedFiles = response.data.filter(item => 
           item.type === 'file' && 
-          item.processed?.embeddings_generated?.done === true
+          item.isProcessed === true
         );
         setAvailableFiles(processedFiles);
         console.log('📁 Loaded available files for document chat:', processedFiles.length);
@@ -124,38 +126,45 @@ function DocumentChat({ isSplit = false, onBack, onViewChange, tabIdx = 0, pageI
   };
 
   const handleUploadClick = () => {
-    // Handle upload functionality here
-    console.log('Upload clicked');
-    
-    // Find the hardcoded reference file from available files
-    const hardcodedFileId = 'file-1bcf6d47fc704e63bf6b754b88668b08';
-    const foundFile = availableFiles.find(file => file.id === hardcodedFileId);
-    
-    if (foundFile) {
+    // Open the upload modal for file selection
+    setIsUploadModalOpen(true);
+  };
+
+  const handleModalClose = () => {
+    setIsUploadModalOpen(false);
+  };
+
+  const handleModalUpload = (files: any[]) => {
+    // Process the selected files from the modal
+    files.forEach(file => {
+      if (file.source === 'drive') {
+        // Handle drive files
       const docToAdd: DocumentTag = {
-        id: foundFile.id,
-        name: foundFile.name,
-        type: mapFileTypeToDocumentType(foundFile.file_type || 'pdf'),
-        file_type: foundFile.file_type || 'pdf' // Preserve original file_type
+          id: file.id,
+          name: file.name,
+          type: mapFileTypeToDocumentType(file.fileType || 'pdf'),
+          file_type: file.fileType || 'pdf'
       };
       
-      // Check if it's already selected
       if (!selectedDocuments.find(doc => doc.id === docToAdd.id)) {
         setSelectedDocuments(prev => [...prev, docToAdd]);
       }
-    } else {
-      // Fallback to hardcoded if not found in available files
-      const hardcodedDoc: DocumentTag = {
-        id: hardcodedFileId,
-        name: 'Document File',
-        type: 'pdf',
-        file_type: 'pdf' // Add original file_type
+      } else if (file.source === 'upload' && file.uploadStatus === 'completed') {
+        // Handle uploaded files
+        const docToAdd: DocumentTag = {
+          id: file.fileId || file.id,
+          name: file.name,
+          type: mapFileTypeToDocumentType(file.fileType || 'pdf'),
+          file_type: file.fileType || 'pdf'
       };
       
-      if (!selectedDocuments.find(doc => doc.id === hardcodedDoc.id)) {
-        setSelectedDocuments(prev => [...prev, hardcodedDoc]);
+        if (!selectedDocuments.find(doc => doc.id === docToAdd.id)) {
+          setSelectedDocuments(prev => [...prev, docToAdd]);
       }
     }
+    });
+    
+    setIsUploadModalOpen(false);
   };
 
   const toggleProfile = () => {
@@ -186,8 +195,8 @@ function DocumentChat({ isSplit = false, onBack, onViewChange, tabIdx = 0, pageI
     const hardcodedDocs: DocumentTag[] = foundFile ? [{
       id: foundFile.id,
       name: foundFile.name,
-      type: mapFileTypeToDocumentType(foundFile.file_type || 'pdf'),
-      file_type: foundFile.file_type || 'pdf' // Add the original file_type
+      type: mapFileTypeToDocumentType(foundFile.fileType || 'pdf'),
+      file_type: foundFile.fileType || 'pdf' // Add the original file_type
     }] : [{
       id: hardcodedFileIds[0],
       name: 'Document File',
@@ -442,6 +451,13 @@ function DocumentChat({ isSplit = false, onBack, onViewChange, tabIdx = 0, pageI
           </div>
         ))}
       </div>
+
+      {/* Upload Modal */}
+      <UploadModal
+        isOpen={isUploadModalOpen}
+        onClose={handleModalClose}
+        onUpload={handleModalUpload}
+      />
     </div>
   );
 }
