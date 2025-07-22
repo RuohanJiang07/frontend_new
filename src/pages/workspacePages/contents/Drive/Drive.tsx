@@ -1,7 +1,10 @@
-import React, { useState, useEffect } from 'react';
-import { MoreVerticalIcon, SearchIcon } from 'lucide-react';
+import React, { useState, useEffect, useRef } from 'react';
+import { MoreVerticalIcon, SearchIcon, Trash2Icon } from 'lucide-react';
 import './Drive.css';
 import { getDriveFiles, TransformedDriveItem, getFilesByParentId, getFolderPath } from '../../../../api/workspaces/drive/getFiles';
+import { deleteFile } from '../../../../api/workspaces/drive/deleteFiles';
+import { useToast } from '../../../../hooks/useToast';
+import DriveUploadModal from '../../../../components/workspacePage/DriveUploadModal';
 
 interface DriveProps {
   onBack?: () => void;
@@ -19,32 +22,37 @@ function Drive({ }: DriveProps) {
   const [error, setError] = useState<string | null>(null);
   const [currentFolderId, setCurrentFolderId] = useState<string>('root');
   const [breadcrumbPath, setBreadcrumbPath] = useState<string[]>([]);
+  const [openMenuId, setOpenMenuId] = useState<string | null>(null);
+  const [isUploadModalOpen, setIsUploadModalOpen] = useState(false);
+  const menuRef = useRef<HTMLDivElement>(null);
+  const { success: showSuccess, error: showError } = useToast();
+
+  // Fetch drive files function
+  const fetchDriveFiles = async () => {
+    setLoading(true);
+    setError(null);
+    
+    try {
+      const result = await getDriveFiles();
+      
+      if (result.success && result.data) {
+        setDriveItems(result.data);
+        if (result.workspaceName) {
+          setWorkspaceName(result.workspaceName);
+        }
+      } else {
+        setError(result.error || 'Failed to fetch drive files');
+      }
+    } catch (err) {
+      setError('An unexpected error occurred');
+      console.error('Error fetching drive files:', err);
+    } finally {
+      setLoading(false);
+    }
+  };
 
   // Fetch drive files on component mount
   useEffect(() => {
-    const fetchDriveFiles = async () => {
-      setLoading(true);
-      setError(null);
-      
-      try {
-        const result = await getDriveFiles();
-        
-        if (result.success && result.data) {
-          setDriveItems(result.data);
-          if (result.workspaceName) {
-            setWorkspaceName(result.workspaceName);
-          }
-        } else {
-          setError(result.error || 'Failed to fetch drive files');
-        }
-      } catch (err) {
-        setError('An unexpected error occurred');
-        console.error('Error fetching drive files:', err);
-      } finally {
-        setLoading(false);
-      }
-    };
-
     fetchDriveFiles();
   }, []);
 
@@ -65,7 +73,7 @@ function Drive({ }: DriveProps) {
   };
 
   const handleUpload = () => {
-    console.log('Upload clicked');
+    setIsUploadModalOpen(true);
   };
 
   const handleImport = () => {
@@ -112,6 +120,51 @@ function Drive({ }: DriveProps) {
     item.name.toLowerCase().includes(searchQuery.toLowerCase())
   );
 
+  // Close menu when clicking outside
+  useEffect(() => {
+    const handleClickOutside = (event: MouseEvent) => {
+      if (menuRef.current && !menuRef.current.contains(event.target as Node)) {
+        setOpenMenuId(null);
+      }
+    };
+
+    document.addEventListener('mousedown', handleClickOutside);
+    return () => {
+      document.removeEventListener('mousedown', handleClickOutside);
+    };
+  }, []);
+
+  const handleMenuToggle = (itemId: string, e: React.MouseEvent) => {
+    e.stopPropagation();
+    setOpenMenuId(openMenuId === itemId ? null : itemId);
+  };
+
+  const handleDeleteFile = async (item: TransformedDriveItem) => {
+    if (item.type === 'folder') return; // Don't delete folders yet
+    
+    try {
+      // Immediately remove from UI
+      setDriveItems(prev => prev.filter(file => file.id !== item.id));
+      setOpenMenuId(null);
+      
+      // Call API in background
+      const workspaceId = 'efb01627-41f0-4dc4-aeb9-2bff01537139'; // You might want to get this dynamically
+      await deleteFile(workspaceId, item.id);
+      showSuccess(`File '${item.name}' deleted successfully`);
+    } catch (error) {
+      // If API call fails, add the file back to the list
+      setDriveItems(prev => [...prev, item]);
+      showError(`Failed to delete '${item.name}'. Please try again.`);
+      console.error('Error deleting file:', error);
+    }
+  };
+
+  const handleUploadComplete = (files: any[]) => {
+    // Refresh the drive files after upload
+    fetchDriveFiles();
+    showSuccess(`Successfully uploaded ${files.length} file(s)`);
+  };
+
   return (
     <div className="drive-container">
       <div className="drive-content">
@@ -134,6 +187,14 @@ function Drive({ }: DriveProps) {
             </div>
           </div>
         </div>
+
+        {/* DriveUploadModal */}
+        <DriveUploadModal
+          isOpen={isUploadModalOpen}
+          onClose={() => setIsUploadModalOpen(false)}
+          onUpload={handleUploadComplete}
+          onModalClose={fetchDriveFiles}
+        />
 
         {/* File Management Section */}
         <div className="file-management-section">
@@ -226,9 +287,29 @@ function Drive({ }: DriveProps) {
                 alt={item.type}
                 className="drive-file-icon"
               />
-              <button className="drive-file-menu-button" onClick={(e) => e.stopPropagation()}>
+              <button 
+                className="drive-file-menu-button" 
+                onClick={(e) => handleMenuToggle(item.id, e)}
+              >
                 <MoreVerticalIcon size={16} />
               </button>
+              
+              {openMenuId === item.id && (
+                <div className="drive-file-menu-dropdown" ref={menuRef}>
+                  {item.type === 'file' && (
+                    <button
+                      className="drive-file-menu-item delete"
+                      onClick={(e) => {
+                        e.stopPropagation();
+                        handleDeleteFile(item);
+                      }}
+                    >
+                      <Trash2Icon size={14} />
+                      <span>Delete</span>
+                    </button>
+                  )}
+                </div>
+              )}
               
               <div className="drive-file-info">
                 <div className="drive-file-title">{item.name}</div>
