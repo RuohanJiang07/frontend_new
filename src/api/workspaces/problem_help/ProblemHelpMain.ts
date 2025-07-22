@@ -2,7 +2,7 @@ export interface ProblemSolverRequest {
     workspace_id: string;
     conversation_id: string;
     new_conversation: boolean;
-    user_query?: string | null;
+    user_query: string;
     references_selected?: string[] | null;
     profile_selected?: string | null;
   }

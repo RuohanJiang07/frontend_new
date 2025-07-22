@@ -1,6 +1,8 @@
 import React from 'react';
 import { useState } from 'react';
 import './ProblemHelp.css';
+import { submitProblemSolverSolution } from '../../../../../api/workspaces/problem_help/ProblemHelpMain';
+import { useToast } from '../../../../../hooks/useToast';
 
 // Sample history data for demonstration
 const SAMPLE_HISTORY = [
@@ -83,11 +85,13 @@ interface ProblemHelpProps {
 
 function ProblemHelp({ isSplit = false, onBack, onViewChange, tabIdx = 0, pageIdx = 0, screenId = '' }: ProblemHelpProps) {
   const { switchToProblemHelp, switchToProblemHelpResponse } = useTabContext();
+  const { error, success } = useToast();
   const [inputValue, setInputValue] = useState('');
   const [isInputFocused, setIsInputFocused] = useState(false);
   const [profileSelected, setProfileSelected] = useState(false);
   const [isUploadHovered, setIsUploadHovered] = useState(false);
   const [searchQuery, setSearchQuery] = useState('');
+  const [isSubmitting, setIsSubmitting] = useState(false);
 
   const toggleProfile = () => {
     setProfileSelected(!profileSelected);
@@ -128,8 +132,97 @@ function ProblemHelp({ isSplit = false, onBack, onViewChange, tabIdx = 0, pageId
     item.type.toLowerCase().includes(searchQuery.toLowerCase())
   );
 
-  // Handle sending a new query
-  const handleSendQuery = () => {
+  // Handle sending a new query - Updated to use real API
+  const handleSendQuery = async () => {
+    if (!inputValue.trim() || isSubmitting) return;
+    
+    try {
+      setIsSubmitting(true);
+      
+      // Generate a unique tab ID for this new conversation
+      const tabId = window.location.pathname + window.location.search;
+      
+      // Generate conversation ID FIRST, before any navigation or API calls
+      const newConversationId = `ps-c-${generateUUID()}`;
+      
+      console.log('🚀 Starting new Problem Help conversation:', {
+        query: inputValue.trim(),
+        profile: profileSelected ? 'selected' : null,
+        tabId,
+        conversationId: newConversationId
+      });
+      
+      // Clear any existing data for this tab
+      localStorage.removeItem(`problemhelp_history_data_${tabId}`);
+      localStorage.removeItem(`problemhelp_history_loaded_${tabId}`);
+      localStorage.removeItem(`problemhelp_streaming_content_${tabId}`);
+      localStorage.removeItem(`problemhelp_streaming_complete_${tabId}`);
+      
+      // Store the conversation ID BEFORE navigation
+      localStorage.setItem(`problemhelp_conversation_${tabId}`, newConversationId);
+      console.log('💾 Stored conversation ID BEFORE navigation:', newConversationId);
+      
+      // Store the initial query for the response page
+      localStorage.setItem(`problemhelp_query_${tabId}`, inputValue.trim());
+      localStorage.setItem(`problemhelp_profile_${tabId}`, profileSelected ? 'selected' : '');
+      
+      // Navigate to response page first
+      switchToProblemHelpResponse(pageIdx, screenId, tabIdx);
+      
+      // Start the API call
+      await submitProblemSolverSolution(
+        inputValue.trim(),
+        profileSelected ? 'selected' : undefined,
+        null, // references
+        (data: string) => {
+          // Store streaming data for the response page to pick up
+          const currentContent = localStorage.getItem(`problemhelp_streaming_content_${tabId}`) || '';
+          localStorage.setItem(`problemhelp_streaming_content_${tabId}`, currentContent + data);
+          
+          // Trigger event for response page to update
+          window.dispatchEvent(new CustomEvent('problemhelp-streaming-update', {
+            detail: { tabId, content: currentContent + data }
+          }));
+        },
+        (errorMsg: string) => {
+          console.error('Problem Help streaming error:', errorMsg);
+          error(`Error: ${errorMsg}`);
+          setIsSubmitting(false);
+        },
+        () => {
+          console.log('Problem Help streaming completed');
+          localStorage.setItem(`problemhelp_streaming_complete_${tabId}`, 'true');
+          
+          // Trigger completion event
+          window.dispatchEvent(new CustomEvent('problemhelp-streaming-complete', {
+            detail: { tabId }
+          }));
+          setIsSubmitting(false);
+        },
+        undefined, // no existing conversation ID (this is a new conversation)
+        newConversationId  // use our pre-generated conversation ID
+      );
+      
+      console.log('✅ Problem Help conversation started with ID:', newConversationId);
+      
+    } catch (err) {
+      console.error('Error starting Problem Help conversation:', err);
+      error('Failed to start conversation. Please try again.');
+      setIsSubmitting(false);
+    }
+  };
+  
+  // Helper function to generate UUID
+  const generateUUID = (): string => {
+    return 'xxxxxxxx-xxxx-4xxx-yxxx-xxxxxxxxxxxx'.replace(/[xy]/g, function(c) {
+      const r = Math.random() * 16 | 0;
+      const v = c == 'x' ? r : (r & 0x3 | 0x8);
+      return v.toString(16);
+    });
+  };
+
+  // Handle sending a new query - Legacy version for history items
+  const handleSendQueryLegacy = () => {
     if (!inputValue.trim()) return;
     const tabId = window.location.pathname + window.location.search;
     // Store the query in localStorage for the response page to load
@@ -251,9 +344,9 @@ function ProblemHelp({ isSplit = false, onBack, onViewChange, tabIdx = 0, pageId
 
             {/* Send Button */}
             <button 
-              className={`problem-help-send-button ${inputValue.trim() ? 'active' : ''}`}
+              className={`problem-help-send-button ${inputValue.trim() && !isSubmitting ? 'active' : ''}`}
               onClick={handleSendQuery}
-              disabled={!inputValue.trim()}
+              disabled={!inputValue.trim() || isSubmitting}
               title="Send Query" 
             >
               <img 
