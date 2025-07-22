@@ -708,16 +708,19 @@ const DocumentChatResponse: React.FC<DocumentChatResponseProps> = ({ isSplit = f
                   disabled={isSubmitting || selectedFiles.length === 0}
                 />
                 
-                {/* Show submit button when there's text */}
-                {inputValue.trim() && selectedFiles.length > 0 && (
-                  <button
-                    onClick={handleSubmitQuestion}
-                    disabled={isSubmitting}
-                    className="absolute bottom-4 right-4 bg-[#80A5E4] hover:bg-[#6b94d6] text-white rounded-lg px-4 py-2 text-sm font-['Inter',Helvetica] transition-colors disabled:opacity-50 disabled:cursor-not-allowed"
-                  >
-                    {isSubmitting ? 'Sending...' : 'Send'}
-                  </button>
-                )}
+                {/* Send Button */}
+                <button 
+                  className={`document-chat-send-button ${inputValue.trim() && selectedFiles.length > 0 ? 'active' : ''}`}
+                  onClick={handleSubmitQuestion}
+                  disabled={!inputValue.trim() || selectedFiles.length === 0 || isSubmitting}
+                  title="Send Query" 
+                >
+                  <img 
+                    src="/workspace/arrow-up.svg" 
+                    alt="Send" 
+                    className="document-chat-send-icon"
+                  />
+                </button>
               </div>
             </div>
           </div>

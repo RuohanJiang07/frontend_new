@@ -576,8 +576,13 @@
   transition: border-color 0.2s ease, box-shadow 0.2s ease;
 }
 
-.document-chat-response-input-box:hover,
-.document-chat-response-input-box:focus-within {
+/* Remove shadow when input is disabled/loading */
+.document-chat-response-input-box.loading {
+  box-shadow: none;
+}
+
+.document-chat-response-input-box:hover:not(.loading),
+.document-chat-response-input-box:focus-within:not(.loading) {
   border-color: #4C6694;
   box-shadow: 0px 1px 15px rgba(76, 102, 148, 0.15);
 }
@@ -593,6 +598,65 @@
   font-weight: 500;
   color: #000;
   line-height: normal;
+  background: transparent;
+}
+
+/* Remove any browser default styling when disabled */
+.document-chat-response-input:disabled {
+  background: transparent;
+  opacity: 0.6;
+  cursor: not-allowed;
+}
+
+/* Send button styles - copied from DeepLearn */
+.document-chat-send-button {
+  position: absolute;
+  bottom: 13px;
+  right: 16px;
+  width: 33px;
+  height: 33px;
+  border-radius: 50%;
+  background: #f5f5f5;
+  border: 1.2px solid #B5B5B5;
+  display: flex;
+  align-items: center;
+  justify-content: center;
+  cursor: pointer;
+  transition: all 0.2s ease;
+  opacity: 0.5;
+}
+
+.document-chat-send-button.active {
+  background: #4C6694;
+  border-color: #4C6694;
+  opacity: 1;
+  box-shadow: 0px 2px 8px rgba(76, 102, 148, 0.25);
+}
+
+.document-chat-send-button:hover {
+  border-color: #4C6694;
+  box-shadow: 0px 2px 8px rgba(76, 102, 148, 0.15);
+}
+
+.document-chat-send-button.active:hover {
+  background: #3d5a7a;
+  box-shadow: 0px 2px 8px rgba(76, 102, 148, 0.25);
+}
+
+.document-chat-send-button:disabled {
+  cursor: not-allowed;
+  opacity: 0.5;
+}
+
+.document-chat-send-icon {
+  width: 21px;
+  height: 21px;
+  filter: brightness(0) saturate(100%) invert(54%) sepia(0%) saturate(0%) hue-rotate(251deg) brightness(94%) contrast(92%);
+  transition: filter 0.2s ease;
+}
+
+.document-chat-send-button.active .document-chat-send-icon {
+  filter: brightness(0) invert(1);
 }
 
 .document-chat-response-input::placeholder {
