@@ -151,15 +151,41 @@ function DocumentChat({ isSplit = false, onBack, onViewChange, tabIdx = 0, pageI
   };
 
   const handleStartConversation = () => {
+    // Check if any documents are selected
+    if (selectedDocuments.length === 0) {
+      error('Please select at least one document for chat');
+      return;
+    }
+    
+    // Generate a unique tab ID for this specific tab instance
+    const tabId = `${pageIdx}-${screenId}-${tabIdx}`;
+    
+    // Clear ALL existing conversation data for this tab to ensure fresh start
+    Object.keys(localStorage).forEach(key => {
+      if (key.startsWith(`documentchat_`) && key.includes(tabId)) {
+        localStorage.removeItem(key);
+      }
+    });
+    
+    // Explicitly remove history loaded flags
+    localStorage.removeItem(`documentchat_history_loaded_${tabId}`);
+    localStorage.removeItem(`documentchat_history_data_${tabId}`);
+    
     // Save selected references to localStorage for the response page
-    const tabId = window.location.pathname + window.location.search;
     const selectedFileIds = selectedDocuments.map(doc => doc.id);
     
-    // Store the selected references and documents for the response page
+    // Store the selected references and documents for the NEW conversation
     localStorage.setItem(`documentchat_selected_files_${tabId}`, JSON.stringify(selectedFileIds));
     localStorage.setItem(`documentchat_selected_documents_${tabId}`, JSON.stringify(selectedDocuments));
     
-    console.log('💾 Saved selected references for document chat:', selectedFileIds);
+    // Mark this as a NEW conversation (not history)
+    localStorage.setItem(`documentchat_new_conversation_${tabId}`, 'true');
+    
+    console.log('🆕 Starting NEW document chat conversation:', {
+      tabId,
+      selectedFileIds,
+      selectedDocuments
+    });
     
     switchToDocumentChatResponse(pageIdx, screenId, tabIdx);
   };
@@ -168,18 +194,27 @@ function DocumentChat({ isSplit = false, onBack, onViewChange, tabIdx = 0, pageI
     // Generate a unique tab ID for this specific tab instance
     const tabId = `${pageIdx}-${screenId}-${tabIdx}`;
     
+    // Clear ALL existing conversation data for this tab first
+    Object.keys(localStorage).forEach(key => {
+      if (key.startsWith(`documentchat_`) && key.includes(tabId)) {
+        localStorage.removeItem(key);
+      }
+    });
+    
     // Store the conversation ID for loading the full conversation
     localStorage.setItem(`documentchat_conversation_${tabId}`, item.conversation_id);
     
     // Mark this as a history conversation that needs to be loaded
     localStorage.setItem(`documentchat_history_loaded_${tabId}`, 'true');
     
-    // Clear any existing data
-    localStorage.removeItem(`documentchat_history_data_${tabId}`);
-    localStorage.removeItem(`documentchat_streaming_content_${tabId}`);
-    localStorage.removeItem(`documentchat_streaming_complete_${tabId}`);
-    localStorage.removeItem(`documentchat_selected_files_${tabId}`);
-    localStorage.removeItem(`documentchat_selected_documents_${tabId}`);
+    // Ensure new conversation flag is NOT set for history
+    localStorage.removeItem(`documentchat_new_conversation_${tabId}`);
+    
+    console.log('📂 Loading HISTORY conversation:', {
+      tabId,
+      conversationId: item.conversation_id,
+      title: item.title
+    });
     
     // Navigate to the response page
     
