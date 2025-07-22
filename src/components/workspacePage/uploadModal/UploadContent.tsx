@@ -200,13 +200,15 @@ const UploadContent: React.FC<UploadContentProps> = ({ onFileSelection, selected
     switch (file.uploadStatus) {
       case 'uploading':
       case 'processing':
-        return <div className="flex space-x-1">
-          <div className="w-1.5 h-1.5 bg-gray-300 rounded-full"></div>
-          <div className="w-1.5 h-1.5 bg-gray-300 rounded-full"></div>
-          <div className="w-1.5 h-1.5 bg-gray-300 rounded-full"></div>
-        </div>;
+        return (
+          <div className="flex space-x-1">
+            <div className="w-1.5 h-1.5 bg-gray-400 rounded-full animate-bounce" style={{ animationDelay: '0ms' }}></div>
+            <div className="w-1.5 h-1.5 bg-gray-400 rounded-full animate-bounce" style={{ animationDelay: '150ms' }}></div>
+            <div className="w-1.5 h-1.5 bg-gray-400 rounded-full animate-bounce" style={{ animationDelay: '300ms' }}></div>
+          </div>
+        );
       case 'completed':
-        return <CheckIcon className="w-5 h-5 text-green-600" />;
+        return <CheckIcon className="w-5 h-5" style={{ color: '#00276C' }} />;
       case 'error':
         return <AlertCircleIcon className="w-5 h-5 text-red-600" />;
       default:
@@ -217,15 +219,15 @@ const UploadContent: React.FC<UploadContentProps> = ({ onFileSelection, selected
   const getStatusColor = (file: UploadedFile) => {
     switch (file.uploadStatus) {
       case 'uploading':
-        return 'bg-blue-50 border-blue-200';
+        return 'bg-white border-gray-300';
       case 'processing':
-        return 'bg-yellow-50 border-yellow-200';
+        return 'bg-white border-gray-300';
       case 'completed':
-        return 'bg-green-50 border-green-200';
+        return 'bg-white border-gray-300';
       case 'error':
-        return 'bg-red-50 border-red-200';
+        return 'bg-white border-red-300';
       default:
-        return 'bg-gray-50 border-gray-200';
+        return 'bg-white border-gray-300';
     }
   };
 
@@ -236,34 +238,46 @@ const UploadContent: React.FC<UploadContentProps> = ({ onFileSelection, selected
   );
 
   return (
-    <div className="flex flex-col h-full p-6">
+    <div className="flex flex-col h-full overflow-y-auto" style={{ padding: '16px 24px 24px 24px' }}>
+      {/* Title */}
+      <h3 
+        className="text-left mb-4 font-['Inter',Helvetica]"
+        style={{ fontSize: '24px', color: '#000000', fontWeight: '510' }}
+      >
+        Upload files from your computer
+      </h3>
+
       {/* Upload Area */}
       <div
-        className={`border-2 border-dashed rounded-lg p-8 text-center transition-colors ${
+        className={`rounded-lg p-8 transition-colors ${
           dragOver
-            ? 'border-blue-500 bg-blue-50'
-            : 'border-gray-300 hover:border-gray-400'
+            ? 'bg-blue-50'
+            : 'hover:bg-gray-50'
         }`}
+        style={{
+          border: `2px dashed ${dragOver ? '#3B82F6' : '#D1D5DB'}`,
+          borderDasharray: '8, 4'
+        }}
         onDragOver={handleDragOver}
         onDragLeave={handleDragLeave}
         onDrop={handleDrop}
       >
         <UploadIcon className="w-12 h-12 text-gray-400 mx-auto mb-4" />
-        <h3 className="text-lg font-medium text-gray-900 mb-2 font-['Inter',Helvetica]">
-          Upload files from your computer
-        </h3>
-        <p className="text-sm text-gray-600 mb-4 font-['Inter',Helvetica]">
+        <p className="text-sm text-gray-600 mb-4 font-['Inter',Helvetica] text-center">
           Drag and drop files here, or click to browse
         </p>
-        <p className="text-xs text-gray-500 mb-4 font-['Inter',Helvetica]">
+        <p className="text-xs text-gray-500 mb-4 font-['Inter',Helvetica] text-center">
           Supported formats: PDF, DOC, DOCX, TXT, MD, EPUB, PPTX
         </p>
-        <button
-          onClick={() => fileInputRef.current?.click()}
-          className="px-4 py-2 bg-blue-600 text-white rounded-lg hover:bg-blue-700 transition-colors font-['Inter',Helvetica]"
-        >
-          Choose Files
-        </button>
+        <div className="text-center">
+          <button
+            onClick={() => fileInputRef.current?.click()}
+            className="px-4 py-2 text-white rounded-lg transition-colors font-['Inter',Helvetica]"
+            style={{ backgroundColor: '#4C6694' }}
+          >
+            Choose Files
+          </button>
+        </div>
         <input
           ref={fileInputRef}
           type="file"
@@ -317,8 +331,11 @@ const UploadContent: React.FC<UploadContentProps> = ({ onFileSelection, selected
                   <div className="space-y-2">
                     <div className="w-full bg-gray-200 rounded-full h-2">
                       <div 
-                        className="bg-blue-600 h-2 rounded-full transition-all duration-300"
-                        style={{ width: `${file.progress || 0}%` }}
+                        className="h-2 rounded-full transition-all duration-300"
+                        style={{ 
+                          width: `${file.progress || 0}%`,
+                          backgroundColor: '#00276C'
+                        }}
                       ></div>
                     </div>
                     <p className="text-xs text-gray-600 font-['Inter',Helvetica]">
@@ -327,21 +344,19 @@ const UploadContent: React.FC<UploadContentProps> = ({ onFileSelection, selected
                   </div>
                 )}
 
-                {/* Status Message for Completed/Error */}
-                {(file.uploadStatus === 'completed' || file.uploadStatus === 'error') && (
-                  <div className="space-y-1">
-                    <p className={`text-xs font-['Inter',Helvetica] ${
-                      file.uploadStatus === 'completed' ? 'text-green-600' : 'text-red-600'
-                    }`}>
-                      {file.progressMessage}
-                    </p>
-                    {file.uploadStatus === 'completed' && (
-                      <p className="text-xs text-blue-600 font-['Inter',Helvetica] font-medium">
-                        ✓ Ready to use as reference
+                                  {/* Status Message for Completed/Error */}
+                  {(file.uploadStatus === 'completed' || file.uploadStatus === 'error') && (
+                    <div className="space-y-1">
+                      <p className={`text-xs font-['Inter',Helvetica] ${
+                        file.uploadStatus === 'completed' ? 'text-[#00276C]' : 'text-red-600'
+                      }`}>
+                        {file.uploadStatus === 'completed' 
+                          ? `${file.progressMessage} (Ready to use as reference)`
+                          : file.progressMessage
+                        }
                       </p>
-                    )}
-                  </div>
-                )}
+                    </div>
+                  )}
               </div>
             ))}
           </div>

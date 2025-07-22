@@ -189,9 +189,10 @@ const UploadModal: React.FC<UploadModalProps> = ({ isOpen, onClose, onUpload }) 
             <Button
               onClick={handleUpload}
               disabled={!hasCompletedFiles}
-              className={`px-4 py-2 bg-blue-600 hover:bg-blue-700 text-white font-['Inter',Helvetica] ${
+              className={`px-4 py-2 text-white font-['Inter',Helvetica] ${
                 !hasCompletedFiles ? 'opacity-50 cursor-not-allowed' : ''
               }`}
+              style={{ backgroundColor: '#4C6694' }}
             >
               Select
             </Button>
