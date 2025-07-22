@@ -120,16 +120,20 @@ export interface DeepLearnDeepRequest {
   };
   
   export const submitDeepLearnDeepQuery = async (
-    query: string,
-    webSearch: boolean,
-    additionalComments?: string,
-    references?: string[] | null,
-    onData: (data: DeepLearnStreamingData) => void,
-    onError: (error: string) => void,
-    onComplete: () => void,
-    existingConversationId?: string, // Existing conversation ID for continuous conversation
-    generatedConversationId?: string // Generated conversation ID for new conversation
-  ): Promise<string> => {
+  query: string,
+  webSearch: boolean,
+  onData: (data: DeepLearnStreamingData) => void,
+  onError: (error: string) => void,
+  onComplete: () => void,
+  additionalComments?: string,
+  references?: string[] | null,
+  existingConversationId?: string, // Existing conversation ID for continuous conversation
+  generatedConversationId?: string, // Generated conversation ID for new conversation
+  searchType?: 'new_topic' | 'followup', // Search type for non-new conversations
+  pageIdx?: number,
+  screenId?: string,
+  tabIdx?: number
+): Promise<string> => {
     try {
       const workspaceId = getWorkspaceId();
       if (!workspaceId) {
@@ -140,13 +144,17 @@ export interface DeepLearnDeepRequest {
       const conversationId = existingConversationId || generatedConversationId || generateConversationId();
       const isNewConversation = !existingConversationId;
       
+      // Determine search type: new_topic for new conversations, user selection for existing ones
+      const finalSearchType = isNewConversation ? "new_topic" : (searchType || "new_topic");
+      
       console.log('🆔 Deep Learn - Using conversation ID:', conversationId, 'isNew:', isNewConversation);
+      console.log('🔍 Deep Learn - Search type:', finalSearchType);
       console.log('📤 Deep Learn - Starting deep learn endpoint first...');
 
       const requestData: DeepLearnDeepRequest = {
         workspace_id: workspaceId,
         conversation_id: conversationId,
-        search_type: isNewConversation ? "new_topic" : "new_topic", // Always new_topic for now
+        search_type: finalSearchType,
         web_search: webSearch,
         user_query: query,
         new_conversation: isNewConversation,
@@ -171,30 +179,28 @@ export interface DeepLearnDeepRequest {
         throw new Error(`HTTP error! status: ${response.status}`);
       }
 
-      // Immediately start the interactive endpoint call (no delay)
-      console.log('🔧 Starting interactive endpoint call simultaneously...');
-      const tabId = window.location.pathname + window.location.search;
-      
-      const interactivePromise = callInteractiveEndpoint(conversationId, query, additionalComments)
-        .then(interactiveData => {
-          console.log('✅ Interactive endpoint returned data for Deep Learn:', interactiveData);
-          
-          // Store interactive data
+      // Call interactive endpoint 2 seconds after deep learn starts
+      setTimeout(() => {
+        callInteractiveEndpoint(conversationId, query, additionalComments)
+          .then(interactiveData => {
+            console.log('✅ Interactive endpoint returned data for Deep Learn:', interactiveData);
+            
+                      // Store interactive data for the sidebar with proper tab isolation
+          const tabId = `${pageIdx}-${screenId}-${tabIdx}`;
           localStorage.setItem(`deeplearn_interactive_${tabId}`, JSON.stringify(interactiveData));
           console.log('💾 Stored interactive data to localStorage with key:', `deeplearn_interactive_${tabId}`);
           
-          // Trigger event to update sidebar
+          // Trigger event to update sidebar with tab-specific data
           window.dispatchEvent(new CustomEvent('deeplearn-interactive-update', {
             detail: { tabId, data: interactiveData }
           }));
           console.log('📡 Triggered deeplearn-interactive-update event for tabId:', tabId);
-          
-          return interactiveData;
-        })
-        .catch(error => {
-          console.error('❌ Interactive endpoint error for Deep Learn:', error);
-          // Don't throw error to avoid breaking the main deep learn flow
-        });
+          })
+          .catch(error => {
+            console.error('❌ Interactive endpoint error for Deep Learn:', error);
+            // Don't throw error to avoid breaking the main deep learn flow
+          });
+      }, 2000);
 
       // Start processing the deep learn response stream
       const reader = response.body?.getReader();
@@ -289,10 +295,8 @@ export interface DeepLearnDeepRequest {
         }
       }
 
-      // Wait for interactive endpoint to complete (but don't block the main flow)
-      interactivePromise.catch(error => {
-        console.warn('⚠️ Interactive call failed but continuing with Deep Learn:', error);
-      });
+      // Interactive endpoint is called asynchronously with 2-second delay
+      // No need to wait for it to complete
 
       return conversationId;
     } catch (error) {

@@ -3,6 +3,16 @@ import { useState } from 'react';
 import './DeepLearn.css';
 import { useEffect } from 'react';
 import { useTabContext } from '../../../workspaceFrame/TabContext';
+import { submitQuickSearchQuery } from '../../../../../api/workspaces/deep_learn/deepLearn_quicksearch';
+
+// Helper function to generate UUID
+const generateUUID = (): string => {
+  return 'xxxxxxxx-xxxx-4xxx-yxxx-xxxxxxxxxxxx'.replace(/[xy]/g, function(c) {
+    const r = Math.random() * 16 | 0;
+    const v = c == 'x' ? r : (r & 0x3 | 0x8);
+    return v.toString(16);
+  });
+};
 
 interface DeepLearnProps {
   isSplit?: boolean;
@@ -32,6 +42,7 @@ function DeepLearn({ isSplit = false, onBack, onViewChange, tabIdx = 0, pageIdx 
   const [referenceSelected, setReferenceSelected] = useState(false);
   const [trendingTopics, setTrendingTopics] = useState<TrendingTopic[]>([]);
   const [historyItems, setHistoryItems] = useState<any[]>([]);
+  const [isSubmitting, setIsSubmitting] = useState(false);
 
   // Load trending topics on component mount
   useEffect(() => {
@@ -168,9 +179,26 @@ function DeepLearn({ isSplit = false, onBack, onViewChange, tabIdx = 0, pageIdx 
   };
 
   // Handle navigation to response page
-  const handleNavigateToResponse = () => {
-    if (inputValue.trim()) {
-      switchToDeepLearnResponse(pageIdx, screenId, tabIdx);
+  const handleNavigateToResponse = async () => {
+    if (inputValue.trim() && !isSubmitting) {
+      setIsSubmitting(true);
+      
+      try {
+        // Generate conversation ID for both modes
+        const conversationId = `dl-c-${generateUUID()}`;
+        
+        // Store the conversation ID for the response page
+        localStorage.setItem('current_deeplearn_conversation_id', conversationId);
+        localStorage.setItem('current_deeplearn_query', inputValue);
+        localStorage.setItem('current_deeplearn_mode', selectedMode);
+        localStorage.setItem('current_deeplearn_web_search', webSearchEnabled.toString());
+        
+        // Navigate to response page immediately
+        switchToDeepLearnResponse(pageIdx, screenId, tabIdx);
+      } catch (error) {
+        console.error('Error preparing query:', error);
+        setIsSubmitting(false);
+      }
     }
   };
 
@@ -180,8 +208,18 @@ function DeepLearn({ isSplit = false, onBack, onViewChange, tabIdx = 0, pageIdx 
   };
 
   // Handle trending topic click
-  const handleTrendingTopicClick = (topic: TrendingTopic) => {
+  const handleTrendingTopicClick = async (topic: TrendingTopic) => {
     setInputValue(topic.title);
+    
+    // Generate conversation ID for both modes
+    const conversationId = `dl-c-${generateUUID()}`;
+    
+    // Store the conversation ID for the response page
+    localStorage.setItem('current_deeplearn_conversation_id', conversationId);
+    localStorage.setItem('current_deeplearn_query', topic.title);
+    localStorage.setItem('current_deeplearn_mode', selectedMode);
+    localStorage.setItem('current_deeplearn_web_search', webSearchEnabled.toString());
+    
     // Navigate to response page immediately
     switchToDeepLearnResponse(pageIdx, screenId, tabIdx);
   };
@@ -260,11 +298,12 @@ function DeepLearn({ isSplit = false, onBack, onViewChange, tabIdx = 0, pageIdx 
             onFocus={() => setIsInputFocused(true)}
             onBlur={() => setIsInputFocused(false)}
             onKeyDown={(e) => {
-              if (e.key === 'Enter' && !e.shiftKey && inputValue.trim()) {
+              if (e.key === 'Enter' && !e.shiftKey && inputValue.trim() && !isSubmitting) {
                 e.preventDefault();
                 handleNavigateToResponse();
               }
             }}
+            disabled={isSubmitting}
           />
           
           {/* Buttons at the bottom right */}
@@ -273,7 +312,8 @@ function DeepLearn({ isSplit = false, onBack, onViewChange, tabIdx = 0, pageIdx 
             <button 
               className={`deep-learn-button ${profileSelected ? 'selected' : ''}`}
               onClick={toggleProfile}
-              title="Select Profile" 
+              title="Select Profile"
+              disabled={isSubmitting}
             >
               <img 
                 src="/workspace/deepLearn/contacts-line.svg" 
@@ -287,7 +327,8 @@ function DeepLearn({ isSplit = false, onBack, onViewChange, tabIdx = 0, pageIdx 
             <button 
               className={`deep-learn-button ${referenceSelected ? 'selected' : ''}`}
               onClick={toggleReference}
-              title="Select References" 
+              title="Select References"
+              disabled={isSubmitting}
             >
               <img 
                 src="/workspace/deepLearn/folder.svg" 
@@ -302,9 +343,9 @@ function DeepLearn({ isSplit = false, onBack, onViewChange, tabIdx = 0, pageIdx 
 
             {/* Send Button */}
             <button 
-              className={`deep-learn-send-button ${inputValue.trim() ? 'active' : ''}`}
+              className={`deep-learn-send-button ${inputValue.trim() && !isSubmitting ? 'active' : ''}`}
               onClick={handleNavigateToResponse}
-              disabled={!inputValue.trim()}
+              disabled={!inputValue.trim() || isSubmitting}
               title="Send Query" 
             >
               <img 

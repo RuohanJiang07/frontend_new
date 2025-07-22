@@ -1,5 +1,8 @@
-import React, { useState } from 'react';
+import React, { useState, useEffect } from 'react';
 import { useTabContext } from '../../../workspaceFrame/TabContext';
+import { submitQuickSearchQuery } from '../../../../../api/workspaces/deep_learn/deepLearn_quicksearch';
+import { submitDeepLearnDeepQuery, DeepLearnStreamingData } from '../../../../../api/workspaces/deep_learn/deepLearn_deeplearn';
+import { MarkdownRenderer } from '../../../../../components/ui/markdown';
 import './DeepLearnResponse.css';
 
 interface DeepLearnResponseProps {
@@ -8,6 +11,52 @@ interface DeepLearnResponseProps {
   tabIdx?: number;
   pageIdx?: number;
   screenId?: string;
+}
+
+interface ConversationMessage {
+  id: string;
+  type: 'question' | 'answer';
+  content: string;
+  timestamp: string;
+  mode: 'deep-learn' | 'quick-search';
+  isStreaming?: boolean;
+}
+
+interface InteractiveData {
+  success: boolean;
+  conversation_title: string;
+  topic: string;
+  roadmap_node_index: number;
+  concept_map: {
+    nodes: Array<{
+      id: number;
+      label: string;
+      neighbors: number[];
+    }>;
+  };
+  interactive_content: {
+    conversation_title: string;
+    recommended_videos: Array<{
+      title: string;
+      url: string;
+      thumbnail: string;
+      channel: string;
+    }>;
+    related_webpages: Array<{
+      title: string;
+      url: string;
+      description: string;
+    }>;
+    related_concepts: Array<{
+      concept: string;
+      explanation: string;
+    }>;
+  };
+  files_updated: {
+    conversation_json: string;
+    concept_map_json: string;
+  };
+  timestamp: string;
 }
 
 const DeepLearnResponse: React.FC<DeepLearnResponseProps> = ({ isSplit = false, onBack, tabIdx = 0, pageIdx = 0, screenId = '' }) => {
@@ -24,6 +73,256 @@ const DeepLearnResponse: React.FC<DeepLearnResponseProps> = ({ isSplit = false, 
   const [selectedMode, setSelectedMode] = useState<'follow-up' | 'new-topic' | null>(null);
   const [webSearchEnabled, setWebSearchEnabled] = useState(false);
   const [selectedResponseMode, setSelectedResponseMode] = useState<'deep-learn' | 'quick-search'>('deep-learn');
+  const [conversation, setConversation] = useState<ConversationMessage[]>([]);
+  const [isLoading, setIsLoading] = useState(false);
+  const [interactiveData, setInteractiveData] = useState<InteractiveData | null>(null);
+  const [isInteractiveLoading, setIsInteractiveLoading] = useState(true); // Start with loading true
+  const [currentConversationId, setCurrentConversationId] = useState<string>(''); // Store current conversation ID
+  const [deepLearnProgress, setDeepLearnProgress] = useState<{
+    current: number;
+    total: number;
+    percentage: number;
+    status: string;
+  } | null>(null);
+  
+  // Ensure loading state is properly initialized
+  useEffect(() => {
+    console.log('🔧 Ensuring loading state is true on mount');
+    setIsInteractiveLoading(true);
+  }, []);
+  
+  // Debug loading state
+  useEffect(() => {
+    console.log('🔄 Interactive loading state changed:', isInteractiveLoading);
+  }, [isInteractiveLoading]);
+
+  // Debug initial render
+  useEffect(() => {
+    console.log('🚀 DeepLearnResponse component mounted, isInteractiveLoading:', isInteractiveLoading);
+  }, []);
+
+  // Load conversation data from localStorage on component mount
+  useEffect(() => {
+    const conversationId = localStorage.getItem('current_deeplearn_conversation_id');
+    const query = localStorage.getItem('current_deeplearn_query');
+    const mode = localStorage.getItem('current_deeplearn_mode');
+    const webSearch = localStorage.getItem('current_deeplearn_web_search') === 'true';
+    
+    // Don't load cached interactive data - always start fresh
+    // Interactive data should only come from the current API call
+    console.log('🚀 Starting fresh - no cached interactive data loaded');
+    
+    if (conversationId && query && (mode === 'quick-search' || mode === 'deep-learn')) {
+      // Store the conversation ID for follow-up queries
+      setCurrentConversationId(conversationId);
+      
+      // Set the response mode based on the initial mode
+      setSelectedResponseMode(mode as 'deep-learn' | 'quick-search');
+      
+      // Add the initial question to the conversation
+      const initialQuestion: ConversationMessage = {
+        id: '1',
+        type: 'question',
+        content: query,
+        timestamp: new Date().toLocaleString(),
+        mode: mode as 'deep-learn' | 'quick-search'
+      };
+      
+      setConversation([initialQuestion]);
+      setIsLoading(true);
+      setDeepLearnProgress(null); // Clear any previous progress
+      
+      if (mode === 'quick-search') {
+        // Add a streaming answer message for quick search
+        const streamingAnswer: ConversationMessage = {
+          id: '2',
+          type: 'answer',
+          content: '',
+          timestamp: new Date().toLocaleString(),
+          mode: 'quick-search',
+          isStreaming: true
+        };
+        
+        setConversation([initialQuestion, streamingAnswer]);
+        
+        // Call the quick search API to get the streaming response
+        submitQuickSearchQuery(
+          query,
+          webSearch,
+          (data: string) => {
+            // Update the streaming content
+            setConversation(prev => prev.map(msg => 
+              msg.id === '2' 
+                ? { ...msg, content: msg.content + data }
+                : msg
+            ));
+          },
+          (error: string) => {
+            console.error('Quick search error:', error);
+            setIsLoading(false);
+            // Update the message to show error
+            setConversation(prev => prev.map(msg => 
+              msg.id === '2' 
+                ? { ...msg, content: `Error: ${error}`, isStreaming: false }
+                : msg
+            ));
+          },
+          () => {
+            console.log('Quick search completed');
+            setIsLoading(false);
+            // Mark streaming as complete
+            setConversation(prev => prev.map(msg => 
+              msg.id === '2' 
+                ? { ...msg, isStreaming: false }
+                : msg
+            ));
+          },
+          undefined, // additionalComments
+          undefined, // references
+          undefined, // existingConversationId - don't pass this for new conversations
+          conversationId, // generatedConversationId - pass as generated conversation ID
+          undefined, // searchType
+          pageIdx,
+          screenId,
+          tabIdx
+        );
+      } else if (mode === 'deep-learn') {
+        // Add a streaming answer message for deep learn
+        const streamingAnswer: ConversationMessage = {
+          id: '2',
+          type: 'answer',
+          content: '',
+          timestamp: new Date().toLocaleString(),
+          mode: 'deep-learn',
+          isStreaming: true
+        };
+        
+        setConversation([initialQuestion, streamingAnswer]);
+        
+        // Call the deep learn API to get the streaming response
+        submitDeepLearnDeepQuery(
+          query,
+          webSearch,
+          (data: DeepLearnStreamingData) => {
+            console.log('📥 Received deep learn streaming data:', data);
+            
+            // Update progress if available
+            if (data.progress) {
+              setDeepLearnProgress({
+                current: data.progress.current_completions,
+                total: data.progress.total_expected_completions,
+                percentage: data.progress.progress_percentage,
+                status: data.stream_info || 'Processing...'
+              });
+            }
+            
+            // Update the streaming content with the LLM response
+            if (data.llm_response) {
+              setConversation(prev => prev.map(msg => 
+                msg.id === '2' 
+                  ? { ...msg, content: data.llm_response }
+                  : msg
+              ));
+            }
+          },
+          (error: string) => {
+            console.error('Deep learn error:', error);
+            setIsLoading(false);
+            // Update the message to show error
+            setConversation(prev => prev.map(msg => 
+              msg.id === '2' 
+                ? { ...msg, content: `Error: ${error}`, isStreaming: false }
+                : msg
+            ));
+          },
+          () => {
+            console.log('Deep learn completed');
+            setIsLoading(false);
+            // Mark streaming as complete
+            setConversation(prev => prev.map(msg => 
+              msg.id === '2' 
+                ? { ...msg, isStreaming: false }
+                : msg
+            ));
+          },
+          undefined, // additionalComments
+          undefined, // references
+          undefined, // existingConversationId - don't pass this for new conversations
+          conversationId, // generatedConversationId - pass as generated conversation ID
+          undefined, // searchType
+          pageIdx,
+          screenId,
+          tabIdx
+        );
+      }
+      
+      // Clear the localStorage to prevent duplicate loading
+      localStorage.removeItem('current_deeplearn_conversation_id');
+      localStorage.removeItem('current_deeplearn_query');
+      localStorage.removeItem('current_deeplearn_mode');
+      localStorage.removeItem('current_deeplearn_web_search');
+      
+      // Clear any existing interactive data for this tab
+      const tabId = `${pageIdx}-${screenId}-${tabIdx}`;
+      localStorage.removeItem(`deeplearn_interactive_${tabId}`);
+    }
+  }, []);
+
+  // Set a timeout to stop interactive loading after 60 seconds (fallback)
+  useEffect(() => {
+    if (isInteractiveLoading) {
+      const timeout = setTimeout(() => {
+        console.log('⏰ Interactive loading timeout after 60s - stopping loading state');
+        console.log('⚠️ This might indicate a backend issue or event listener problem');
+        setIsInteractiveLoading(false);
+      }, 60000); // 60 seconds - much longer timeout
+
+      return () => clearTimeout(timeout);
+    }
+  }, [isInteractiveLoading]);
+
+  // Listen for interactive data updates with tab isolation
+  useEffect(() => {
+    console.log('👂 Setting up interactive data event listener for tab isolation');
+    
+    const handleInteractiveUpdate = (event: CustomEvent) => {
+      const { tabId, data } = event.detail;
+      const currentTabId = `${pageIdx}-${screenId}-${tabIdx}`;
+      
+      // Only process events for this specific tab
+      if (tabId !== currentTabId) {
+        console.log('🚫 Ignoring interactive update for different tab:', tabId, 'current tab:', currentTabId);
+        return;
+      }
+      
+      console.log('📡 Received interactive data update for current tab:', tabId);
+      console.log('📊 Data structure:', {
+        hasVideos: data?.interactive_content?.recommended_videos?.length > 0,
+        hasWebpages: data?.interactive_content?.related_webpages?.length > 0,
+        videosLength: data?.interactive_content?.recommended_videos?.length,
+        webpagesLength: data?.interactive_content?.related_webpages?.length
+      });
+      
+      setInteractiveData(data);
+      
+      // Only stop loading if we have actual content
+      if (data?.interactive_content?.recommended_videos?.length > 0 || 
+          data?.interactive_content?.related_webpages?.length > 0) {
+        console.log('✅ Interactive content received - stopping loading state');
+        setIsInteractiveLoading(false);
+      } else {
+        console.log('⚠️ Interactive data received but no content yet - keeping loading state');
+      }
+    };
+
+    window.addEventListener('deeplearn-interactive-update', handleInteractiveUpdate as EventListener);
+    console.log('✅ Interactive event listener registered for tab:', `${pageIdx}-${screenId}-${tabIdx}`);
+
+    return () => {
+      console.log('🧹 Cleaning up interactive event listener for tab:', `${pageIdx}-${screenId}-${tabIdx}`);
+      window.removeEventListener('deeplearn-interactive-update', handleInteractiveUpdate as EventListener);
+    };
+  }, [pageIdx, screenId, tabIdx]);
 
   const handleBackClick = () => {
     // Navigate back to deep learn entry page
@@ -62,6 +361,319 @@ const DeepLearnResponse: React.FC<DeepLearnResponseProps> = ({ isSplit = false, 
     setSelectedResponseMode(mode);
   };
 
+  // Handle submit from input box
+  const handleSubmitQuery = async () => {
+    if (!inputValue.trim() || isLoading) return;
+
+    const query = inputValue.trim();
+    console.log('📝 Submitting follow-up query:', query);
+    console.log('🔍 Current mode:', selectedMode);
+    console.log('🌐 Web search enabled:', webSearchEnabled);
+    console.log('🎯 Response mode:', selectedResponseMode);
+
+    // Determine the mode for the new query
+    const queryMode = selectedResponseMode;
+
+    // Add the new question to conversation
+    const newQuestion: ConversationMessage = {
+      id: Date.now().toString(),
+      type: 'question',
+      content: query,
+      timestamp: new Date().toLocaleString(),
+      mode: queryMode
+    };
+
+    // Add streaming answer message
+    const streamingAnswer: ConversationMessage = {
+      id: (Date.now() + 1).toString(),
+      type: 'answer',
+      content: '',
+      timestamp: new Date().toLocaleString(),
+      mode: queryMode,
+      isStreaming: true
+    };
+
+    setConversation(prev => [...prev, newQuestion, streamingAnswer]);
+    setIsLoading(true);
+    setIsInteractiveLoading(true); // Start interactive loading for new query
+    setDeepLearnProgress(null); // Clear previous progress
+    setInputValue(''); // Clear input
+
+    // Use stored conversation ID or generate new one
+    const conversationIdToUse = currentConversationId || 'dl-c-' + Date.now();
+
+    try {
+      if (queryMode === 'quick-search') {
+        await submitQuickSearchQuery(
+          query,
+          webSearchEnabled,
+          (data: string) => {
+            // Update the streaming content
+            setConversation(prev => prev.map(msg => 
+              msg.id === streamingAnswer.id 
+                ? { ...msg, content: msg.content + data }
+                : msg
+            ));
+          },
+          (error: string) => {
+            console.error('Follow-up quick search error:', error);
+            setIsLoading(false);
+            // Update the message to show error
+            setConversation(prev => prev.map(msg => 
+              msg.id === streamingAnswer.id 
+                ? { ...msg, content: `Error: ${error}`, isStreaming: false }
+                : msg
+            ));
+          },
+          () => {
+            console.log('Follow-up quick search completed');
+            setIsLoading(false);
+            // Mark streaming as complete
+            setConversation(prev => prev.map(msg => 
+              msg.id === streamingAnswer.id 
+                ? { ...msg, isStreaming: false }
+                : msg
+            ));
+          },
+          undefined, // additionalComments
+          undefined, // references
+          conversationIdToUse, // existingConversationId - pass current conversation ID
+          undefined, // generatedConversationId - not needed for follow-up
+          selectedMode === 'follow-up' ? 'followup' : 'new_topic', // searchType based on user selection
+          pageIdx,
+          screenId,
+          tabIdx
+        );
+      } else if (queryMode === 'deep-learn') {
+        await submitDeepLearnDeepQuery(
+          query,
+          webSearchEnabled,
+          (data: DeepLearnStreamingData) => {
+            console.log('📥 Received follow-up deep learn streaming data:', data);
+            
+            // Update progress if available
+            if (data.progress) {
+              setDeepLearnProgress({
+                current: data.progress.current_completions,
+                total: data.progress.total_expected_completions,
+                percentage: data.progress.progress_percentage,
+                status: data.stream_info || 'Processing...'
+              });
+            }
+            
+            // Update the streaming content with the LLM response
+            if (data.llm_response) {
+              setConversation(prev => prev.map(msg => 
+                msg.id === streamingAnswer.id 
+                  ? { ...msg, content: data.llm_response }
+                  : msg
+              ));
+            }
+          },
+          (error: string) => {
+            console.error('Follow-up deep learn error:', error);
+            setIsLoading(false);
+            // Update the message to show error
+            setConversation(prev => prev.map(msg => 
+              msg.id === streamingAnswer.id 
+                ? { ...msg, content: `Error: ${error}`, isStreaming: false }
+                : msg
+            ));
+          },
+          () => {
+            console.log('Follow-up deep learn completed');
+            setIsLoading(false);
+            // Mark streaming as complete
+            setConversation(prev => prev.map(msg => 
+              msg.id === streamingAnswer.id 
+                ? { ...msg, isStreaming: false }
+                : msg
+            ));
+          },
+          undefined, // additionalComments
+          undefined, // references
+          conversationIdToUse, // existingConversationId - pass current conversation ID
+          undefined, // generatedConversationId - not needed for follow-up
+          selectedMode === 'follow-up' ? 'followup' : 'new_topic', // searchType based on user selection
+          pageIdx,
+          screenId,
+          tabIdx
+        );
+      }
+    } catch (error) {
+      console.error('Error submitting follow-up query:', error);
+      setIsLoading(false);
+    }
+  };
+
+  const formatTimestamp = (timestamp: string) => {
+    const date = new Date(timestamp);
+    const now = new Date();
+    const diffInHours = (now.getTime() - date.getTime()) / (1000 * 60 * 60);
+    
+    if (diffInHours < 24) {
+      return `Me, ${date.toLocaleDateString('en-US', { month: 'short', day: 'numeric' })}, ${date.toLocaleTimeString('en-US', { hour: 'numeric', minute: '2-digit', hour12: true })}`;
+    } else {
+      return `Me, ${date.toLocaleDateString('en-US', { month: 'short', day: 'numeric', year: 'numeric' })}, ${date.toLocaleTimeString('en-US', { hour: 'numeric', minute: '2-digit', hour12: true })}`;
+    }
+  };
+
+  const renderConversationGroup = (message: ConversationMessage, index: number) => {
+    if (message.type === 'question') {
+      return (
+        <div key={message.id} className="deep-learn-response-conversation-group">
+          {/* Question Part */}
+          <div className="deep-learn-response-question">
+            <span className="deep-learn-response-question-date">
+              {formatTimestamp(message.timestamp)}
+            </span>
+            <div className="deep-learn-response-question-box">
+              <span className="deep-learn-response-question-text">
+                {message.content}
+              </span>
+            </div>
+          </div>
+        </div>
+      );
+    } else if (message.type === 'answer') {
+      return (
+        <div key={message.id} className="deep-learn-response-conversation-group">
+          {/* Answer Part */}
+          <div className={`deep-learn-response-answer ${message.mode === 'quick-search' ? 'response-quick-search' : ''}`}>
+            {/* Title Section */}
+            <div className="deep-learn-response-title-section">
+              <span className="deep-learn-response-answer-title">
+                {message.mode === 'quick-search' ? 'Quick Search Response' : 'Deep Learn Response'}
+              </span>
+              <div className="deep-learn-response-tag">
+                <span className="deep-learn-response-tag-text">
+                  {message.mode === 'quick-search' ? 'Quick Search' : 'Deep Learn'}
+                </span>
+              </div>
+            </div>
+            
+            {/* Separation Line */}
+            <div className="deep-learn-response-separator"></div>
+            
+            {/* Progress Bar for Deep Learn */}
+            {message.mode === 'deep-learn' && (
+              <div className="deep-learn-response-thinking-bar">
+                <span className="deep-learn-response-thinking-status">
+                  {deepLearnProgress ? deepLearnProgress.status : "Hyperknow is thinking..."}
+                </span>
+                <div className="deep-learn-response-thinking-right">
+                  <span className="deep-learn-response-thinking-duration">
+                    {deepLearnProgress ? `${deepLearnProgress.current}/${deepLearnProgress.total}` : "0/0"}
+                  </span>
+                  <div className="deep-learn-response-thinking-arrow">
+                    <img 
+                      src="/workspace/back-arrow.svg" 
+                      alt="Progress" 
+                      className="deep-learn-response-arrow-icon"
+                    />
+                  </div>
+                </div>
+              </div>
+            )}
+            
+            {/* Source Cards for Deep Learn - Show at beginning */}
+            {message.mode === 'deep-learn' && (
+              <div className="deep-learn-response-sources">
+                <div className="deep-learn-response-source-card">
+                  <div className="deep-learn-response-source-title">
+                    Quantum Mechanics and Black Hole Thermodynamics
+                  </div>
+                  <div className="deep-learn-response-source-detail">
+                    Exploring the intersection of quantum mechanics and black hole thermodynamics.
+                  </div>
+                  <div className="deep-learn-response-source-site">
+                    <img 
+                      src="/workspace/site-icons/science.svg" 
+                      alt="Science" 
+                      className="deep-learn-response-site-icon"
+                    />
+                    <span className="deep-learn-response-site-name">
+                      Science
+                    </span>
+                  </div>
+                </div>
+                
+                <div className="deep-learn-response-source-card">
+                  <div className="deep-learn-response-source-title">
+                    String Theory Approaches to Information Paradox
+                  </div>
+                  <div className="deep-learn-response-source-detail">
+                    How string theory provides insights into resolving the black hole information paradox.
+                  </div>
+                  <div className="deep-learn-response-source-site">
+                    <img 
+                      src="/workspace/site-icons/arxiv.svg" 
+                      alt="arXiv" 
+                      className="deep-learn-response-site-icon"
+                    />
+                    <span className="deep-learn-response-site-name">
+                      arXiv
+                    </span>
+                  </div>
+                </div>
+              </div>
+            )}
+            
+            {/* Response Content */}
+            <div className="deep-learn-response-content-text">
+              {message.isStreaming ? (
+                <div className="streaming-content">
+                  {message.mode === 'deep-learn' ? (
+                    message.content ? (
+                      <MarkdownRenderer content={message.content} />
+                    ) : (
+                      // Loading skeleton for deep learn
+                      <div className="deep-learn-loading-skeleton">
+                        <div className="skeleton-heading"></div>
+                        <div className="skeleton-paragraph"></div>
+                        <div className="skeleton-paragraph short"></div>
+                        <div className="skeleton-paragraph"></div>
+                        <div className="skeleton-image"></div>
+                        <div className="skeleton-heading sub"></div>
+                        <div className="skeleton-paragraph"></div>
+                        <div className="skeleton-paragraph"></div>
+                        <div className="skeleton-paragraph short"></div>
+                        <div className="skeleton-paragraph"></div>
+                      </div>
+                    )
+                  ) : (
+                    message.content
+                  )}
+                  {message.mode !== 'deep-learn' && (
+                    <div className="flex items-center gap-2 text-blue-600 mt-2">
+                      <div className="w-3 h-4 bg-[#4C6694] animate-pulse"></div>
+                      <span className="text-sm font-['Inter',Helvetica]">
+                        Streaming response...
+                      </span>
+                    </div>
+                  )}
+                </div>
+              ) : (
+                message.mode === 'deep-learn' ? (
+                  <MarkdownRenderer content={message.content} />
+                ) : (
+                  message.content
+                )
+              )}
+            </div>
+            
+            {/* End Separator - Only show when not streaming */}
+            {!message.isStreaming && (
+              <div className="deep-learn-response-separator" style={{ marginTop: '10px' }}></div>
+            )}
+          </div>
+        </div>
+      );
+    }
+    
+    return null;
+  };
+
   return (
     <div className="deep-learn-response">
       {/* Header Section */}
@@ -87,7 +699,7 @@ const DeepLearnResponse: React.FC<DeepLearnResponseProps> = ({ isSplit = false, 
 
           {/* Conversation Title */}
           <h1 className="deep-learn-response-title">
-            Learning Journey: Black Hole Information Paradox
+            Learning Journey: {interactiveData?.interactive_content?.conversation_title || (conversation.length > 0 ? conversation[0].content.substring(0, 50) + '...' : 'New Conversation')}
           </h1>
 
           {/* Conversation Tag */}
@@ -150,210 +762,165 @@ const DeepLearnResponse: React.FC<DeepLearnResponseProps> = ({ isSplit = false, 
           <div className="deep-learn-response-conversation">
             {/* Conversation Main Section */}
             <div className="deep-learn-response-conversation-main">
-              {/* Sample conversation group */}
+              {/* Conversation Groups */}
               <div className="deep-learn-response-conversation-groups">
-                {/* First Q&A Group */}
-                <div className="deep-learn-response-conversation-group">
-                  {/* Question Part (User Question) */}
-                  <div className="deep-learn-response-question">
-                    <span className="deep-learn-response-question-date">
-                      Me, Jun 1, 9:50PM
-                    </span>
-                    <div className="deep-learn-response-question-box">
-                      <span className="deep-learn-response-question-text">
-                        What is the Black Hole Information Paradox?
+                {conversation.length > 0 ? (
+                  conversation.map((message, index) => renderConversationGroup(message, index))
+                ) : (
+                  <div className="deep-learn-response-conversation-group">
+                    <div className="deep-learn-response-question">
+                      <span className="deep-learn-response-question-date">
+                        Me, Jun 1, 9:50PM
                       </span>
+                      <div className="deep-learn-response-question-box">
+                        <span className="deep-learn-response-question-text">
+                          What is the Black Hole Information Paradox?
+                        </span>
+                      </div>
                     </div>
-                  </div>
 
-                  {/* Deep Learn Response Part */}
-                  <div className="deep-learn-response-answer">
-                    {/* Title Section */}
-                    <div className="deep-learn-response-title-section">
-                      <span className="deep-learn-response-answer-title">
-                        Solution of Black Hole Information Paradox
-                      </span>
-                      <div className="deep-learn-response-tag">
-                        <span className="deep-learn-response-tag-text">
-                          Deep Learn
+                    {/* Sample Deep Learn Response Part */}
+                    <div className="deep-learn-response-answer">
+                      {/* Title Section */}
+                      <div className="deep-learn-response-title-section">
+                        <span className="deep-learn-response-answer-title">
+                          Solution of Black Hole Information Paradox
                         </span>
-                      </div>
-                    </div>
-                    
-                    {/* Separation Line */}
-                    <div className="deep-learn-response-separator"></div>
-                    
-                    {/* Thinking Progress Bar */}
-                    <div className="deep-learn-response-thinking-bar">
-                      <span className="deep-learn-response-thinking-status">
-                        Thinking...
-                      </span>
-                      <div className="deep-learn-response-thinking-right">
-                        <span className="deep-learn-response-thinking-duration">
-                          Thought for 13 seconds
-                        </span>
-                        <svg 
-                          width="16" 
-                          height="16" 
-                          viewBox="0 0 24 24" 
-                          fill="none" 
-                          xmlns="http://www.w3.org/2000/svg"
-                          className="deep-learn-response-arrow-icon"
-                        >
-                          <path 
-                            d="M6 9L12 15L18 9" 
-                            stroke="black" 
-                            strokeWidth="2" 
-                            strokeLinecap="round" 
-                            strokeLinejoin="round"
-                          />
-                        </svg>
-                      </div>
-                    </div>
-                    
-                    {/* Source Webpages Section */}
-                    <div className="deep-learn-response-sources">
-                      <div className="deep-learn-response-source-card">
-                        <div className="deep-learn-response-source-title">
-                          Black Hole Information Paradox: A Comprehensive Analysis
-                        </div>
-                        <div className="deep-learn-response-source-detail">
-                          Recent developments in quantum mechanics and general relativity have shed new light on this fundamental problem in theoretical physics.
-                        </div>
-                        <div className="deep-learn-response-source-site">
-                          <img 
-                            src="/workspace/site-icons/physics-today.svg" 
-                            alt="Physics Today" 
-                            className="deep-learn-response-site-icon"
-                          />
-                          <span className="deep-learn-response-site-name">
-                            Physics Today
+                        <div className="deep-learn-response-tag">
+                          <span className="deep-learn-response-tag-text">
+                            Deep Learn
                           </span>
                         </div>
                       </div>
                       
-                      <div className="deep-learn-response-source-card">
-                        <div className="deep-learn-response-source-title">
-                          Hawking Radiation and Information Loss
-                        </div>
-                        <div className="deep-learn-response-source-detail">
-                          Understanding the relationship between Hawking radiation and the preservation of quantum information.
-                        </div>
-                        <div className="deep-learn-response-source-site">
-                          <img 
-                            src="/workspace/site-icons/nature.svg" 
-                            alt="Nature" 
-                            className="deep-learn-response-site-icon"
-                          />
-                          <span className="deep-learn-response-site-name">
-                            Nature
-                          </span>
-                        </div>
-                      </div>
+                      {/* Separation Line */}
+                      <div className="deep-learn-response-separator"></div>
                       
-                      <div className="deep-learn-response-source-card">
-                        <div className="deep-learn-response-source-title">
-                          Quantum Mechanics and Black Hole Thermodynamics
-                        </div>
-                        <div className="deep-learn-response-source-detail">
-                          Exploring the intersection of quantum mechanics and black hole thermodynamics.
-                        </div>
-                        <div className="deep-learn-response-source-site">
-                          <img 
-                            src="/workspace/site-icons/science.svg" 
-                            alt="Science" 
-                            className="deep-learn-response-site-icon"
-                          />
-                          <span className="deep-learn-response-site-name">
-                            Science
-                          </span>
-                        </div>
-                      </div>
-                      
-                      <div className="deep-learn-response-source-card">
-                        <div className="deep-learn-response-source-title">
-                          String Theory Approaches to Information Paradox
-                        </div>
-                        <div className="deep-learn-response-source-detail">
-                          How string theory provides insights into resolving the black hole information paradox.
-                        </div>
-                        <div className="deep-learn-response-source-site">
-                          <img 
-                            src="/workspace/site-icons/arxiv.svg" 
-                            alt="arXiv" 
-                            className="deep-learn-response-site-icon"
-                          />
-                          <span className="deep-learn-response-site-name">
-                            arXiv
-                          </span>
-                        </div>
-                      </div>
-                    </div>
-                    
-                    {/* Response Content */}
-                    <div className="deep-learn-response-content-text">
-                      The Black Hole Information Paradox represents one of the most profound challenges in theoretical physics, arising from the apparent conflict between quantum mechanics and general relativity. At its core, the paradox questions whether information that falls into a black hole is permanently lost or somehow preserved.
-
-                      Stephen Hawking's groundbreaking work in 1974 showed that black holes emit radiation (now known as Hawking radiation) and can eventually evaporate. However, this radiation appears to be purely thermal, containing no information about the matter that originally formed the black hole. This creates a fundamental problem: if information is truly lost, it violates the principle of unitarity in quantum mechanics, which states that information must be conserved.
-
-                      Several theoretical approaches have been proposed to resolve this paradox. The AdS/CFT correspondence, proposed by Juan Maldacena in 1997, suggests that information is indeed preserved through a holographic principle where the information is encoded on the black hole's event horizon rather than being lost inside. String theory approaches propose that quantum correlations in the Hawking radiation carry the necessary information.
-
-                      Recent developments in quantum information theory and the study of quantum entanglement have provided new insights. The concept of "firewalls" and the ER=EPR conjecture suggest that quantum entanglement might play a crucial role in preserving information across the event horizon.
-
-                      While the paradox remains not fully resolved, these theoretical frameworks provide promising directions for understanding how quantum mechanics and gravity can be reconciled, potentially leading to a unified theory of quantum gravity.
-                    </div>
-                    
-                    {/* End Separator */}
-                    <div className="deep-learn-response-separator" style={{ marginTop: '10px' }}></div>
-                  </div>
-                </div>
-                
-                {/* Second Q&A Group - Quick Search */}
-                <div className="deep-learn-response-conversation-group">
-                  {/* Question Part (User Question) */}
-                  <div className="deep-learn-response-question">
-                    <span className="deep-learn-response-question-date">
-                      Me, Jun 1, 10:15PM
-                    </span>
-                    <div className="deep-learn-response-question-box">
-                      <span className="deep-learn-response-question-text">
-                        What are the latest developments in quantum computing?
-                      </span>
-                    </div>
-                  </div>
-
-                  {/* Quick Search Response Part */}
-                  <div className="deep-learn-response-answer response-quick-search">
-                    {/* Title Section */}
-                    <div className="deep-learn-response-title-section">
-                      <span className="deep-learn-response-answer-title">
-                        Latest Developments in Quantum Computing
-                      </span>
-                      <div className="deep-learn-response-tag">
-                        <span className="deep-learn-response-tag-text">
-                          Quick Search
+                      {/* Thinking Progress Bar */}
+                      <div className="deep-learn-response-thinking-bar">
+                        <span className="deep-learn-response-thinking-status">
+                          Thinking...
                         </span>
+                        <div className="deep-learn-response-thinking-right">
+                          <span className="deep-learn-response-thinking-duration">
+                            Thought for 13 seconds
+                          </span>
+                          <svg 
+                            width="16" 
+                            height="16" 
+                            viewBox="0 0 24 24" 
+                            fill="none" 
+                            xmlns="http://www.w3.org/2000/svg"
+                            className="deep-learn-response-arrow-icon"
+                          >
+                            <path 
+                              d="M6 9L12 15L18 9" 
+                              stroke="black" 
+                              strokeWidth="2" 
+                              strokeLinecap="round" 
+                              strokeLinejoin="round"
+                            />
+                          </svg>
+                        </div>
                       </div>
+                      
+                      {/* Source Webpages Section */}
+                      <div className="deep-learn-response-sources">
+                        <div className="deep-learn-response-source-card">
+                          <div className="deep-learn-response-source-title">
+                            Black Hole Information Paradox: A Comprehensive Analysis
+                          </div>
+                          <div className="deep-learn-response-source-detail">
+                            Recent developments in quantum mechanics and general relativity have shed new light on this fundamental problem in theoretical physics.
+                          </div>
+                          <div className="deep-learn-response-source-site">
+                            <img 
+                              src="/workspace/site-icons/physics-today.svg" 
+                              alt="Physics Today" 
+                              className="deep-learn-response-site-icon"
+                            />
+                            <span className="deep-learn-response-site-name">
+                              Physics Today
+                            </span>
+                          </div>
+                        </div>
+                        
+                        <div className="deep-learn-response-source-card">
+                          <div className="deep-learn-response-source-title">
+                            Hawking Radiation and Information Loss
+                          </div>
+                          <div className="deep-learn-response-source-detail">
+                            Understanding the relationship between Hawking radiation and the preservation of quantum information.
+                          </div>
+                          <div className="deep-learn-response-source-site">
+                            <img 
+                              src="/workspace/site-icons/nature.svg" 
+                              alt="Nature" 
+                              className="deep-learn-response-site-icon"
+                            />
+                            <span className="deep-learn-response-site-name">
+                              Nature
+                            </span>
+                          </div>
+                        </div>
+                        
+                        <div className="deep-learn-response-source-card">
+                          <div className="deep-learn-response-source-title">
+                            Quantum Mechanics and Black Hole Thermodynamics
+                          </div>
+                          <div className="deep-learn-response-source-detail">
+                            Exploring the intersection of quantum mechanics and black hole thermodynamics.
+                          </div>
+                          <div className="deep-learn-response-source-site">
+                            <img 
+                              src="/workspace/site-icons/science.svg" 
+                              alt="Science" 
+                              className="deep-learn-response-site-icon"
+                            />
+                            <span className="deep-learn-response-site-name">
+                              Science
+                            </span>
+                          </div>
+                        </div>
+                        
+                        <div className="deep-learn-response-source-card">
+                          <div className="deep-learn-response-source-title">
+                            String Theory Approaches to Information Paradox
+                          </div>
+                          <div className="deep-learn-response-source-detail">
+                            How string theory provides insights into resolving the black hole information paradox.
+                          </div>
+                          <div className="deep-learn-response-source-site">
+                            <img 
+                              src="/workspace/site-icons/arxiv.svg" 
+                              alt="arXiv" 
+                              className="deep-learn-response-site-icon"
+                            />
+                            <span className="deep-learn-response-site-name">
+                              arXiv
+                            </span>
+                          </div>
+                        </div>
+                      </div>
+                      
+                      {/* Response Content */}
+                      <div className="deep-learn-response-content-text">
+                        The Black Hole Information Paradox represents one of the most profound challenges in theoretical physics, arising from the apparent conflict between quantum mechanics and general relativity. At its core, the paradox questions whether information that falls into a black hole is permanently lost or somehow preserved.
+
+                        Stephen Hawking's groundbreaking work in 1974 showed that black holes emit radiation (now known as Hawking radiation) and can eventually evaporate. However, this radiation appears to be purely thermal, containing no information about the matter that originally formed the black hole. This creates a fundamental problem: if information is truly lost, it violates the principle of unitarity in quantum mechanics, which states that information must be conserved.
+
+                        Several theoretical approaches have been proposed to resolve this paradox. The AdS/CFT correspondence, proposed by Juan Maldacena in 1997, suggests that information is indeed preserved through a holographic principle where the information is encoded on the black hole's event horizon rather than being lost inside. String theory approaches propose that quantum correlations in the Hawking radiation carry the necessary information.
+
+                        Recent developments in quantum information theory and the study of quantum entanglement have provided new insights. The concept of "firewalls" and the ER=EPR conjecture suggest that quantum entanglement might play a crucial role in preserving information across the event horizon.
+
+                        While the paradox remains not fully resolved, these theoretical frameworks provide promising directions for understanding how quantum mechanics and gravity can be reconciled, potentially leading to a unified theory of quantum gravity.
+                      </div>
+                      
+                      {/* End Separator */}
+                      <div className="deep-learn-response-separator" style={{ marginTop: '10px' }}></div>
                     </div>
-                    
-                    {/* Separation Line */}
-                    <div className="deep-learn-response-separator"></div>
-                    
-                    {/* Response Content */}
-                    <div className="deep-learn-response-content-text">
-                      Quantum computing has seen remarkable progress in recent years, with several key developments shaping the field. IBM's quantum roadmap has achieved significant milestones, including the development of 433-qubit Osprey processor and plans for 4,000+ qubit systems by 2025. Google's Sycamore processor demonstrated quantum supremacy in 2019, solving a problem in 200 seconds that would take classical supercomputers 10,000 years.
-
-                      Error correction has emerged as a critical focus area, with companies like PsiQuantum developing photonic quantum computers that could potentially scale to millions of qubits. Microsoft's topological qubit approach using Majorana fermions shows promise for more stable quantum bits. Startups like IonQ and Rigetti are making quantum computers accessible through cloud platforms, democratizing access to quantum computing resources.
-
-                      The development of quantum algorithms continues to advance, with applications in cryptography, drug discovery, and optimization problems. Quantum machine learning is also gaining traction, with hybrid classical-quantum approaches showing potential for solving complex problems in finance and logistics.
-
-                      Major investments from governments worldwide, including the US National Quantum Initiative and EU's Quantum Flagship program, are accelerating research and development. The race for quantum advantage in practical applications is intensifying, with companies across various industries exploring quantum solutions for their most challenging computational problems.
-                    </div>
-                    
-                    {/* End Separator */}
-                    <div className="deep-learn-response-separator"></div>
                   </div>
-                </div>
+                )}
               </div>
             </div>
 
@@ -380,12 +947,18 @@ const DeepLearnResponse: React.FC<DeepLearnResponseProps> = ({ isSplit = false, 
                   </div>
                 ) : (
                   <>
-                    <textarea
-                      className="deep-learn-response-input"
-                      placeholder="Type your question here..."
-                      value={inputValue}
-                      onChange={(e) => setInputValue(e.target.value)}
-                    />
+                                <textarea
+              className="deep-learn-response-input"
+              placeholder="Type your question here..."
+              value={inputValue}
+              onChange={(e) => setInputValue(e.target.value)}
+              onKeyPress={(e) => {
+                if (e.key === 'Enter' && !e.shiftKey) {
+                  e.preventDefault();
+                  handleSubmitQuery();
+                }
+              }}
+            />
                     {selectedMode && (
                       <div className="deep-learn-response-mode-change">
                         <span className="deep-learn-response-mode-text">Change to </span>
@@ -404,39 +977,39 @@ const DeepLearnResponse: React.FC<DeepLearnResponseProps> = ({ isSplit = false, 
                 <div className="deep-learn-response-buttons">
                   {/* Mode Toggle Button - Only show when New Topic is selected */}
                   {selectedMode === 'new-topic' && (
-                                          <div className="deep-learn-response-mode-toggle">
-                        <div 
-                          className={`deep-learn-response-mode-toggle-option ${selectedResponseMode === 'deep-learn' ? 'selected' : 'unselected'}`}
-                          onClick={() => toggleResponseMode('deep-learn')}
-                          title="Deep Learn"
-                        >
-                          <img 
-                            src="/workspace/deepLearn/lens-stars.svg" 
-                            alt="Deep Learn Icon" 
-                            className="deep-learn-response-mode-toggle-icon"
-                            style={{ filter: selectedResponseMode === 'deep-learn' ? 'brightness(0) invert(1)' : 'brightness(0) saturate(100%) invert(32%) sepia(9%) saturate(2096%) hue-rotate(182deg) brightness(93%) contrast(87%)' }}
-                          />
-                        </div>
-                        <div 
-                          className={`deep-learn-response-mode-toggle-option ${selectedResponseMode === 'quick-search' ? 'selected' : 'unselected'}`}
-                          onClick={() => toggleResponseMode('quick-search')}
-                          title="Quick Search"
-                        >
-                          <img 
-                            src="/workspace/deepLearn/lens-check.svg" 
-                            alt="Quick Search Icon" 
-                            className="deep-learn-response-mode-toggle-icon"
-                            style={{ filter: selectedResponseMode === 'quick-search' ? 'brightness(0) invert(1)' : 'brightness(0) saturate(100%) invert(32%) sepia(9%) saturate(2096%) hue-rotate(182deg) brightness(93%) contrast(87%)' }}
-                          />
-                        </div>
+                    <div className="deep-learn-response-mode-toggle">
+                      <div 
+                        className={`deep-learn-response-mode-toggle-option ${selectedResponseMode === 'deep-learn' ? 'selected' : 'unselected'}`}
+                        onClick={() => toggleResponseMode('deep-learn')}
+                        title="Deep Learn"
+                      >
+                        <img 
+                          src="/workspace/deepLearn/lens-stars.svg" 
+                          alt="Deep Learn Icon" 
+                          className="deep-learn-response-mode-toggle-icon"
+                          style={{ filter: selectedResponseMode === 'deep-learn' ? 'brightness(0) invert(1)' : 'brightness(0) saturate(100%) invert(32%) sepia(9%) saturate(2096%) hue-rotate(182deg) brightness(93%) contrast(87%)' }}
+                        />
                       </div>
+                      <div 
+                        className={`deep-learn-response-mode-toggle-option ${selectedResponseMode === 'quick-search' ? 'selected' : 'unselected'}`}
+                        onClick={() => toggleResponseMode('quick-search')}
+                        title="Quick Search"
+                      >
+                        <img 
+                          src="/workspace/deepLearn/lens-check.svg" 
+                          alt="Quick Search Icon" 
+                          className="deep-learn-response-mode-toggle-icon"
+                          style={{ filter: selectedResponseMode === 'quick-search' ? 'brightness(0) invert(1)' : 'brightness(0) saturate(100%) invert(32%) sepia(9%) saturate(2096%) hue-rotate(182deg) brightness(93%) contrast(87%)' }}
+                        />
+                      </div>
+                    </div>
                   )}
 
                   {/* Web Search Toggle Button */}
                   <button 
                     className={`deep-learn-response-web-search ${webSearchEnabled ? 'selected' : 'unselected'}`}
                     onClick={toggleWebSearch}
-                    title="Toggle Web Search" 
+                    title="Toggle Web Search"
                   >
                     <img 
                       src="/workspace/deepLearn/language.svg" 
@@ -450,7 +1023,7 @@ const DeepLearnResponse: React.FC<DeepLearnResponseProps> = ({ isSplit = false, 
                   <button 
                     className={`deep-learn-response-button ${profileSelected ? 'selected' : ''}`}
                     onClick={toggleProfile}
-                    title="Select Profile" 
+                    title="Select Profile"
                   >
                     <img 
                       src="/workspace/deepLearn/contacts-line.svg" 
@@ -463,8 +1036,8 @@ const DeepLearnResponse: React.FC<DeepLearnResponseProps> = ({ isSplit = false, 
                   {/* Reference Select Button */}
                   <button 
                     className={`deep-learn-response-button ${referenceSelected ? 'selected' : ''}`}
+                    title="Select References"
                     onClick={toggleReference}
-                    title="Select References" 
                   >
                     <img 
                       src="/workspace/deepLearn/folder.svg" 
@@ -479,9 +1052,10 @@ const DeepLearnResponse: React.FC<DeepLearnResponseProps> = ({ isSplit = false, 
 
                   {/* Send Button */}
                   <button 
-                    className={`deep-learn-response-send-button ${inputValue.trim() ? 'active' : ''}`}
-                    disabled={!inputValue.trim()}
-                    title="Send Query" 
+                    className={`deep-learn-response-send-button ${inputValue.trim() && !isLoading ? 'active' : ''}`}
+                    disabled={!inputValue.trim() || isLoading}
+                    title="Send Query"
+                    onClick={handleSubmitQuery}
                   >
                     <img 
                       src="/workspace/arrow-up.svg" 
@@ -515,34 +1089,94 @@ const DeepLearnResponse: React.FC<DeepLearnResponseProps> = ({ isSplit = false, 
                   
                   {/* Video Content */}
                   <div className="deep-learn-response-video-content">
-                    {/* Single Video Box */}
-                    <div className="deep-learn-response-video-box">
-                      {/* Image Section */}
-                      <div className="deep-learn-response-video-image-section">
-                        <img 
-                          src="https://images.unsplash.com/photo-1446776811953-b23d57bd21aa?w=284&h=132&fit=crop" 
-                          alt="Universe video thumbnail" 
-                          className="deep-learn-response-video-image"
-                        />
-                      </div>
-                      
-                      {/* Text Section */}
-                      <div className="deep-learn-response-video-text-section">
-                        <h4 className="deep-learn-response-video-title">
-                          DNA and Gene Editing Using CRISPR Technology
-                        </h4>
-                        <div className="deep-learn-response-video-source">
-                          <img 
-                            src="/workspace/deepLearn/youtube.svg" 
-                            alt="YouTube" 
-                            className="deep-learn-response-youtube-icon"
-                          />
-                          <span className="deep-learn-response-source-text">
-                            Science Channel
-                          </span>
+                    {isInteractiveLoading ? (
+                      /* Loading state for video */
+                      <div className="deep-learn-response-video-box">
+                        {/* Image Section with grey box and loading overlay */}
+                        <div className="deep-learn-response-video-image-section">
+                          <div className="video-loading-placeholder">
+                            <div className="video-loading-spinner"></div>
+                          </div>
+                        </div>
+                        
+                        {/* Text Section with skeleton loading */}
+                        <div className="deep-learn-response-video-text-section">
+                          <div className="skeleton-video-title"></div>
+                          <div className="skeleton-video-source"></div>
                         </div>
                       </div>
-                    </div>
+                    ) : interactiveData?.interactive_content?.recommended_videos && interactiveData.interactive_content.recommended_videos.length > 0 ? (
+                      // Show only the top 1 video
+                      <div className="deep-learn-response-video-box">
+                        {/* Image Section */}
+                        <div className="deep-learn-response-video-image-section">
+                          <img 
+                            src={interactiveData.interactive_content.recommended_videos[0].thumbnail} 
+                            alt={interactiveData.interactive_content.recommended_videos[0].title} 
+                            className="deep-learn-response-video-image"
+                            onError={(e) => {
+                              // Handle broken images
+                              const target = e.target as HTMLImageElement;
+                              target.src = "https://images.unsplash.com/photo-1446776811953-b23d57bd21aa?w=284&h=132&fit=crop";
+                            }}
+                          />
+                        </div>
+                        
+                        {/* Text Section */}
+                        <div className="deep-learn-response-video-text-section">
+                          <h4 className="deep-learn-response-video-title">
+                            <a 
+                              href={interactiveData.interactive_content.recommended_videos[0].url} 
+                              target="_blank" 
+                              rel="noopener noreferrer"
+                            >
+                              {interactiveData.interactive_content.recommended_videos[0].title}
+                            </a>
+                          </h4>
+                          <div className="deep-learn-response-video-source">
+                            <img 
+                              src="/workspace/deepLearn/youtube.svg" 
+                              alt="YouTube" 
+                              className="deep-learn-response-youtube-icon"
+                            />
+                            <span className="deep-learn-response-source-text">
+                              {interactiveData.interactive_content.recommended_videos[0].channel || 'YouTube'}
+                            </span>
+                          </div>
+                        </div>
+                      </div>
+                    ) : (
+                      /* Fallback video box */
+                      <div className="deep-learn-response-video-box">
+                        {/* Image Section */}
+                        <div className="deep-learn-response-video-image-section">
+                          <img 
+                            src="https://images.unsplash.com/photo-1446776811953-b23d57bd21aa?w=284&h=132&fit=crop" 
+                            alt="Universe video thumbnail" 
+                            className="deep-learn-response-video-image"
+                          />
+                        </div>
+                        
+                        {/* Text Section */}
+                        <div className="deep-learn-response-video-text-section">
+                          <h4 className="deep-learn-response-video-title">
+                            <a href="#" onClick={(e) => e.preventDefault()}>
+                              DNA and Gene Editing Using CRISPR Technology
+                            </a>
+                          </h4>
+                          <div className="deep-learn-response-video-source">
+                            <img 
+                              src="/workspace/deepLearn/youtube.svg" 
+                              alt="YouTube" 
+                              className="deep-learn-response-youtube-icon"
+                            />
+                            <span className="deep-learn-response-source-text">
+                              Science Channel
+                            </span>
+                          </div>
+                        </div>
+                      </div>
+                    )}
                   </div>
                 </div>
 
@@ -562,25 +1196,59 @@ const DeepLearnResponse: React.FC<DeepLearnResponseProps> = ({ isSplit = false, 
                   
                   {/* Webpages Content */}
                   <div className="deep-learn-response-webpages-content">
-                    {/* First Webpage Box */}
-                    <div className="deep-learn-response-webpage-box">
-                      <h4 className="deep-learn-response-webpage-title">
-                        Related Webpages 1
-                      </h4>
-                      <p className="deep-learn-response-webpage-description">
-                        Discover Pinterest's best ideas and inspiration for Study icon. Get inspired and try out new things.
-                      </p>
-                    </div>
-                    
-                    {/* Second Webpage Box */}
-                    <div className="deep-learn-response-webpage-box">
-                      <h4 className="deep-learn-response-webpage-title">
-                        Related Webpages 1
-                      </h4>
-                      <p className="deep-learn-response-webpage-description">
-                        Discover Pinterest's best ideas and inspiration for Study icon. Get inspired and try out new things.
-                      </p>
-                    </div>
+                    {isInteractiveLoading ? (
+                      /* Loading state for webpages - skeleton animation */
+                      <>
+                        <div className="deep-learn-response-webpage-box">
+                          <div className="skeleton-webpage-title"></div>
+                          <div className="skeleton-webpage-description"></div>
+                        </div>
+                        
+                        <div className="deep-learn-response-webpage-box">
+                          <div className="skeleton-webpage-title"></div>
+                          <div className="skeleton-webpage-description"></div>
+                        </div>
+                      </>
+                    ) : interactiveData?.interactive_content?.related_webpages && interactiveData.interactive_content.related_webpages.length > 0 ? (
+                      // Show only the top 2 webpages
+                      interactiveData.interactive_content.related_webpages.slice(0, 2).map((webpage, index) => (
+                        <div key={index} className="deep-learn-response-webpage-box">
+                          <h4 className="deep-learn-response-webpage-title">
+                            <a 
+                              href={webpage.url} 
+                              target="_blank" 
+                              rel="noopener noreferrer"
+                            >
+                              {webpage.title}
+                            </a>
+                          </h4>
+                          <p className="deep-learn-response-webpage-description">
+                            {webpage.description}
+                          </p>
+                        </div>
+                      ))
+                    ) : (
+                      /* Fallback webpage boxes */
+                      <>
+                        <div className="deep-learn-response-webpage-box">
+                          <h4 className="deep-learn-response-webpage-title">
+                            Related Webpages 1
+                          </h4>
+                          <p className="deep-learn-response-webpage-description">
+                            Discover Pinterest's best ideas and inspiration for Study icon. Get inspired and try out new things.
+                          </p>
+                        </div>
+                        
+                        <div className="deep-learn-response-webpage-box">
+                          <h4 className="deep-learn-response-webpage-title">
+                            Related Webpages 1
+                          </h4>
+                          <p className="deep-learn-response-webpage-description">
+                            Discover Pinterest's best ideas and inspiration for Study icon. Get inspired and try out new things.
+                          </p>
+                        </div>
+                      </>
+                    )}
                   </div>
                 </div>
               </div>
