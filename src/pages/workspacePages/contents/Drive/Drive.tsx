@@ -3,8 +3,10 @@ import { MoreVerticalIcon, SearchIcon, Trash2Icon } from 'lucide-react';
 import './Drive.css';
 import { getDriveFiles, TransformedDriveItem, getFilesByParentId, getFolderPath } from '../../../../api/workspaces/drive/getFiles';
 import { deleteFile } from '../../../../api/workspaces/drive/deleteFiles';
+import { createFolder, deleteFolder } from '../../../../api/workspaces/drive/folder';
 import { useToast } from '../../../../hooks/useToast';
 import DriveUploadModal from '../../../../components/workspacePage/DriveUploadModal';
+import CreateFolderModal from '../../../../components/workspacePage/CreateFolderModal';
 
 interface DriveProps {
   onBack?: () => void;
@@ -24,6 +26,7 @@ function Drive({ }: DriveProps) {
   const [breadcrumbPath, setBreadcrumbPath] = useState<string[]>([]);
   const [openMenuId, setOpenMenuId] = useState<string | null>(null);
   const [isUploadModalOpen, setIsUploadModalOpen] = useState(false);
+  const [isCreateFolderModalOpen, setIsCreateFolderModalOpen] = useState(false);
   const menuRef = useRef<HTMLDivElement>(null);
   const { success: showSuccess, error: showError } = useToast();
 
@@ -81,7 +84,7 @@ function Drive({ }: DriveProps) {
   };
 
   const handleCreateFolder = () => {
-    console.log('Create folder clicked');
+    setIsCreateFolderModalOpen(true);
   };
 
   const handleBackClick = () => {
@@ -140,8 +143,27 @@ function Drive({ }: DriveProps) {
   };
 
   const handleDeleteFile = async (item: TransformedDriveItem) => {
-    if (item.type === 'folder') return; // Don't delete folders yet
+    if (item.type === 'folder') {
+      // Handle folder deletion
+      try {
+        // Immediately remove from UI
+        setDriveItems(prev => prev.filter(file => file.id !== item.id));
+        setOpenMenuId(null);
+        
+        // Call API in background
+        const workspaceId = 'efb01627-41f0-4dc4-aeb9-2bff01537139'; // You might want to get this dynamically
+        await deleteFolder(workspaceId, item.id);
+        showSuccess(`Folder '${item.name}' deleted successfully`);
+      } catch (error) {
+        // If API call fails, add the folder back to the list
+        setDriveItems(prev => [...prev, item]);
+        showError(`Failed to delete folder '${item.name}'. Please try again.`);
+        console.error('Error deleting folder:', error);
+      }
+      return;
+    }
     
+    // Handle file deletion
     try {
       // Immediately remove from UI
       setDriveItems(prev => prev.filter(file => file.id !== item.id));
@@ -163,6 +185,26 @@ function Drive({ }: DriveProps) {
     // Refresh the drive files after upload
     fetchDriveFiles();
     showSuccess(`Successfully uploaded ${files.length} file(s)`);
+  };
+
+  const handleCreateFolderComplete = async (folderName: string) => {
+    try {
+      const workspaceId = 'efb01627-41f0-4dc4-aeb9-2bff01537139'; // You might want to get this dynamically
+      const parentId = currentFolderId === 'root' ? 'root' : currentFolderId;
+      
+      const result = await createFolder(workspaceId, parentId, folderName);
+      
+      if (result.success) {
+        // Refresh the drive files after creating folder
+        fetchDriveFiles();
+        showSuccess(`Folder '${folderName}' created successfully`);
+      } else {
+        showError('Failed to create folder');
+      }
+    } catch (error) {
+      console.error('Error creating folder:', error);
+      showError('Failed to create folder. Please try again.');
+    }
   };
 
   return (
@@ -194,6 +236,13 @@ function Drive({ }: DriveProps) {
           onClose={() => setIsUploadModalOpen(false)}
           onUpload={handleUploadComplete}
           onModalClose={fetchDriveFiles}
+        />
+
+        {/* CreateFolderModal */}
+        <CreateFolderModal
+          isOpen={isCreateFolderModalOpen}
+          onClose={() => setIsCreateFolderModalOpen(false)}
+          onCreateFolder={handleCreateFolderComplete}
         />
 
         {/* File Management Section */}
@@ -296,18 +345,16 @@ function Drive({ }: DriveProps) {
               
               {openMenuId === item.id && (
                 <div className="drive-file-menu-dropdown" ref={menuRef}>
-                  {item.type === 'file' && (
-                    <button
-                      className="drive-file-menu-item delete"
-                      onClick={(e) => {
-                        e.stopPropagation();
-                        handleDeleteFile(item);
-                      }}
-                    >
-                      <Trash2Icon size={14} />
-                      <span>Delete</span>
-                    </button>
-                  )}
+                  <button
+                    className="drive-file-menu-item delete"
+                    onClick={(e) => {
+                      e.stopPropagation();
+                      handleDeleteFile(item);
+                    }}
+                  >
+                    <Trash2Icon size={14} />
+                    <span>Delete</span>
+                  </button>
                 </div>
               )}
               
