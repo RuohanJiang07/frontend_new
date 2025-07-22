@@ -1,15 +1,7 @@
-import React, { useState } from 'react';
+import React, { useState, useEffect } from 'react';
 import { MoreVerticalIcon, SearchIcon } from 'lucide-react';
 import './Drive.css';
-
-interface DriveItem {
-  id: string;
-  name: string;
-  type: 'folder' | 'file';
-  fileType?: string;
-  size?: string;
-  fileCount?: number;
-}
+import { getDriveFiles, TransformedDriveItem, getFilesByParentId, getFolderPath } from '../../../../api/workspaces/drive/getFiles';
 
 interface DriveProps {
   onBack?: () => void;
@@ -19,73 +11,56 @@ interface DriveProps {
   screenId?: string;
 }
 
-function Drive({ tabIdx = 0, pageIdx = 0, screenId = '' }: DriveProps) {
+function Drive({ }: DriveProps) {
   const [searchQuery, setSearchQuery] = useState('');
+  const [driveItems, setDriveItems] = useState<TransformedDriveItem[]>([]);
+  const [workspaceName, setWorkspaceName] = useState<string>('My Drive');
+  const [loading, setLoading] = useState(true);
+  const [error, setError] = useState<string | null>(null);
+  const [currentFolderId, setCurrentFolderId] = useState<string>('root');
+  const [breadcrumbPath, setBreadcrumbPath] = useState<string[]>([]);
 
-  // Sample data matching the image
-  const driveItems: DriveItem[] = [
-    {
-      id: '1',
-      name: 'Lecture 1',
-      type: 'folder',
-      fileCount: 8
-    },
-    {
-      id: '2',
-      name: 'Lecture 2',
-      type: 'folder',
-      fileCount: 4
-    },
-    {
-      id: '3',
-      name: 'Calculus - SYLLABUS',
-      type: 'file',
-      fileType: 'docx',
-      size: '9.4MB'
-    },
-    {
-      id: '4',
-      name: 'Problem Set 2',
-      type: 'file',
-      fileType: 'docx',
-      size: '780KB'
-    },
-    {
-      id: '5',
-      name: 'Lecture 3',
-      type: 'folder',
-      fileCount: 4
-    },
-    {
-      id: '6',
-      name: 'Answer Key',
-      type: 'file',
-      fileType: 'docx',
-      size: '9.4MB'
-    },
-    {
-      id: '7',
-      name: 'my diary',
-      type: 'file',
-      fileType: 'docx',
-      size: '780KB'
-    },
-    {
-      id: '8',
-      name: 'Study Guide',
-      type: 'file',
-      fileType: 'docx',
-      size: '1.5MB'
-    }
-  ];
+  // Fetch drive files on component mount
+  useEffect(() => {
+    const fetchDriveFiles = async () => {
+      setLoading(true);
+      setError(null);
+      
+      try {
+        const result = await getDriveFiles();
+        
+        if (result.success && result.data) {
+          setDriveItems(result.data);
+          if (result.workspaceName) {
+            setWorkspaceName(result.workspaceName);
+          }
+        } else {
+          setError(result.error || 'Failed to fetch drive files');
+        }
+      } catch (err) {
+        setError('An unexpected error occurred');
+        console.error('Error fetching drive files:', err);
+      } finally {
+        setLoading(false);
+      }
+    };
 
-  const handleItemClick = (item: DriveItem) => {
+    fetchDriveFiles();
+  }, []);
+
+  // Update breadcrumb path when current folder changes
+  useEffect(() => {
+    const path = getFolderPath(driveItems, currentFolderId);
+    setBreadcrumbPath(path);
+  }, [currentFolderId, driveItems]);
+
+  const handleItemClick = (item: TransformedDriveItem) => {
     if (item.type === 'file') {
       // Handle file click - could navigate to file viewer or editor
       console.log('Opening file:', item.name);
     } else {
       // Handle folder navigation
-      console.log('Opening folder:', item.name);
+      setCurrentFolderId(item.id);
     }
   };
 
@@ -101,7 +76,39 @@ function Drive({ tabIdx = 0, pageIdx = 0, screenId = '' }: DriveProps) {
     console.log('Create folder clicked');
   };
 
-  const filteredItems = driveItems.filter(item =>
+  const handleBackClick = () => {
+    if (currentFolderId !== 'root') {
+      // Find the current folder to get its parent
+      const currentFolder = driveItems.find(item => item.id === currentFolderId);
+      if (currentFolder) {
+        setCurrentFolderId(currentFolder.parentId);
+      }
+    }
+  };
+
+  const handleBreadcrumbClick = (index: number) => {
+    // Navigate to the clicked breadcrumb level
+    if (index === -1) {
+      // Root level
+      setCurrentFolderId('root');
+    } else {
+      // Find the folder at this breadcrumb level
+      const pathItems = [workspaceName, ...breadcrumbPath];
+      const targetFolderName = pathItems[index + 1]; // +1 because index 0 is workspace name
+      const targetFolder = driveItems.find(item => 
+        item.name === targetFolderName && item.type === 'folder'
+      );
+      if (targetFolder) {
+        setCurrentFolderId(targetFolder.id);
+      }
+    }
+  };
+
+  // Get current folder items
+  const currentFolderItems = getFilesByParentId(driveItems, currentFolderId);
+  
+  // Filter items based on search query
+  const filteredItems = currentFolderItems.filter(item =>
     item.name.toLowerCase().includes(searchQuery.toLowerCase())
   );
 
@@ -147,9 +154,29 @@ function Drive({ tabIdx = 0, pageIdx = 0, screenId = '' }: DriveProps) {
         {/* Drive Files Section Header */}
         <div className="drive-files-header">
           <div className="breadcrumb">
-            <span className="breadcrumb-item">My Drive</span>
+            <span className="breadcrumb-item" style={{ color: '#6B6B6B' }}>
+              My Drive
+            </span>
             <span className="breadcrumb-separator">/</span>
-            <span className="breadcrumb-item">PHYS 2801</span>
+            <span 
+              className="breadcrumb-item" 
+              onClick={() => handleBreadcrumbClick(-1)}
+              style={{ cursor: 'pointer' }}
+            >
+              {workspaceName}
+            </span>
+            {breadcrumbPath.map((pathItem, index) => (
+              <React.Fragment key={index}>
+                <span className="breadcrumb-separator">/</span>
+                <span 
+                  className="breadcrumb-item"
+                  onClick={() => handleBreadcrumbClick(index)}
+                  style={{ cursor: 'pointer' }}
+                >
+                  {pathItem}
+                </span>
+              </React.Fragment>
+            ))}
           </div>
           
           <div className="search-container">
@@ -166,7 +193,26 @@ function Drive({ tabIdx = 0, pageIdx = 0, screenId = '' }: DriveProps) {
 
         {/* Drive Files Grid */}
         <div className="drive-files-grid">
-          {filteredItems.map((item) => (
+          {loading ? (
+            // Loading skeleton cards
+            Array.from({ length: 8 }).map((_, index) => (
+              <div key={`loading-${index}`} className="drive-loading-skeleton">
+                <div className="drive-loading-icon"></div>
+                <div className="drive-loading-info">
+                  <div className="drive-loading-title"></div>
+                  <div className="drive-loading-right">
+                    <div className="drive-loading-tag"></div>
+                    <div className="drive-loading-size"></div>
+                  </div>
+                </div>
+              </div>
+            ))
+          ) : error ? (
+            <div className="error-message">{error}</div>
+          ) : filteredItems.length === 0 ? (
+            <div className="empty-message">No files found in this folder.</div>
+          ) : (
+            filteredItems.map((item) => (
             <div
               key={item.id}
               className="drive-file-card"
@@ -196,7 +242,8 @@ function Drive({ tabIdx = 0, pageIdx = 0, screenId = '' }: DriveProps) {
                 </div>
               </div>
             </div>
-          ))}
+          ))
+          )}
         </div>
       </div>
     </div>
