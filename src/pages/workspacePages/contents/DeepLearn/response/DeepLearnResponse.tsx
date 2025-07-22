@@ -180,7 +180,11 @@ const DeepLearnResponse: React.FC<DeepLearnResponseProps> = ({ isSplit = false, 
           undefined, // additionalComments
           undefined, // references
           undefined, // existingConversationId - don't pass this for new conversations
-          conversationId // generatedConversationId - pass as generated conversation ID
+          conversationId, // generatedConversationId - pass as generated conversation ID
+          undefined, // searchType
+          pageIdx,
+          screenId,
+          tabIdx
         );
       } else if (mode === 'deep-learn') {
         // Add a streaming answer message for deep learn
@@ -244,7 +248,11 @@ const DeepLearnResponse: React.FC<DeepLearnResponseProps> = ({ isSplit = false, 
           undefined, // additionalComments
           undefined, // references
           undefined, // existingConversationId - don't pass this for new conversations
-          conversationId // generatedConversationId - pass as generated conversation ID
+          conversationId, // generatedConversationId - pass as generated conversation ID
+          undefined, // searchType
+          pageIdx,
+          screenId,
+          tabIdx
         );
       }
       
@@ -255,7 +263,7 @@ const DeepLearnResponse: React.FC<DeepLearnResponseProps> = ({ isSplit = false, 
       localStorage.removeItem('current_deeplearn_web_search');
       
       // Clear any existing interactive data for this tab
-      const tabId = window.location.pathname + window.location.search;
+      const tabId = `${pageIdx}-${screenId}-${tabIdx}`;
       localStorage.removeItem(`deeplearn_interactive_${tabId}`);
     }
   }, []);
@@ -273,13 +281,21 @@ const DeepLearnResponse: React.FC<DeepLearnResponseProps> = ({ isSplit = false, 
     }
   }, [isInteractiveLoading]);
 
-  // Listen for interactive data updates
+  // Listen for interactive data updates with tab isolation
   useEffect(() => {
-    console.log('👂 Setting up interactive data event listener');
+    console.log('👂 Setting up interactive data event listener for tab isolation');
     
     const handleInteractiveUpdate = (event: CustomEvent) => {
-      const { data } = event.detail;
-      console.log('📡 Received interactive data update:', data);
+      const { tabId, data } = event.detail;
+      const currentTabId = `${pageIdx}-${screenId}-${tabIdx}`;
+      
+      // Only process events for this specific tab
+      if (tabId !== currentTabId) {
+        console.log('🚫 Ignoring interactive update for different tab:', tabId, 'current tab:', currentTabId);
+        return;
+      }
+      
+      console.log('📡 Received interactive data update for current tab:', tabId);
       console.log('📊 Data structure:', {
         hasVideos: data?.interactive_content?.recommended_videos?.length > 0,
         hasWebpages: data?.interactive_content?.related_webpages?.length > 0,
@@ -300,13 +316,13 @@ const DeepLearnResponse: React.FC<DeepLearnResponseProps> = ({ isSplit = false, 
     };
 
     window.addEventListener('deeplearn-interactive-update', handleInteractiveUpdate as EventListener);
-    console.log('✅ Interactive event listener registered');
+    console.log('✅ Interactive event listener registered for tab:', `${pageIdx}-${screenId}-${tabIdx}`);
 
     return () => {
-      console.log('🧹 Cleaning up interactive event listener');
+      console.log('🧹 Cleaning up interactive event listener for tab:', `${pageIdx}-${screenId}-${tabIdx}`);
       window.removeEventListener('deeplearn-interactive-update', handleInteractiveUpdate as EventListener);
     };
-  }, []);
+  }, [pageIdx, screenId, tabIdx]);
 
   const handleBackClick = () => {
     // Navigate back to deep learn entry page
@@ -423,7 +439,10 @@ const DeepLearnResponse: React.FC<DeepLearnResponseProps> = ({ isSplit = false, 
           undefined, // references
           conversationIdToUse, // existingConversationId - pass current conversation ID
           undefined, // generatedConversationId - not needed for follow-up
-          selectedMode === 'follow-up' ? 'followup' : 'new_topic' // searchType based on user selection
+          selectedMode === 'follow-up' ? 'followup' : 'new_topic', // searchType based on user selection
+          pageIdx,
+          screenId,
+          tabIdx
         );
       } else if (queryMode === 'deep-learn') {
         await submitDeepLearnDeepQuery(
@@ -475,7 +494,10 @@ const DeepLearnResponse: React.FC<DeepLearnResponseProps> = ({ isSplit = false, 
           undefined, // references
           conversationIdToUse, // existingConversationId - pass current conversation ID
           undefined, // generatedConversationId - not needed for follow-up
-          selectedMode === 'follow-up' ? 'followup' : 'new_topic' // searchType based on user selection
+          selectedMode === 'follow-up' ? 'followup' : 'new_topic', // searchType based on user selection
+          pageIdx,
+          screenId,
+          tabIdx
         );
       }
     } catch (error) {

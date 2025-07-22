@@ -129,7 +129,10 @@ export interface DeepLearnDeepRequest {
   references?: string[] | null,
   existingConversationId?: string, // Existing conversation ID for continuous conversation
   generatedConversationId?: string, // Generated conversation ID for new conversation
-  searchType?: 'new_topic' | 'followup' // Search type for non-new conversations
+  searchType?: 'new_topic' | 'followup', // Search type for non-new conversations
+  pageIdx?: number,
+  screenId?: string,
+  tabIdx?: number
 ): Promise<string> => {
     try {
       const workspaceId = getWorkspaceId();
@@ -182,16 +185,16 @@ export interface DeepLearnDeepRequest {
           .then(interactiveData => {
             console.log('✅ Interactive endpoint returned data for Deep Learn:', interactiveData);
             
-            // Store interactive data for the sidebar
-            const tabId = window.location.pathname + window.location.search;
-            localStorage.setItem(`deeplearn_interactive_${tabId}`, JSON.stringify(interactiveData));
-            console.log('💾 Stored interactive data to localStorage with key:', `deeplearn_interactive_${tabId}`);
-            
-            // Trigger event to update sidebar
-            window.dispatchEvent(new CustomEvent('deeplearn-interactive-update', {
-              detail: { tabId, data: interactiveData }
-            }));
-            console.log('📡 Triggered deeplearn-interactive-update event for tabId:', tabId);
+                      // Store interactive data for the sidebar with proper tab isolation
+          const tabId = `${pageIdx}-${screenId}-${tabIdx}`;
+          localStorage.setItem(`deeplearn_interactive_${tabId}`, JSON.stringify(interactiveData));
+          console.log('💾 Stored interactive data to localStorage with key:', `deeplearn_interactive_${tabId}`);
+          
+          // Trigger event to update sidebar with tab-specific data
+          window.dispatchEvent(new CustomEvent('deeplearn-interactive-update', {
+            detail: { tabId, data: interactiveData }
+          }));
+          console.log('📡 Triggered deeplearn-interactive-update event for tabId:', tabId);
           })
           .catch(error => {
             console.error('❌ Interactive endpoint error for Deep Learn:', error);

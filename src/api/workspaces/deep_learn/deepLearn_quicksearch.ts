@@ -124,7 +124,10 @@ export const submitQuickSearchQuery = async (
   references?: string[] | null,
   existingConversationId?: string, // Existing conversation ID for continuous conversation
   generatedConversationId?: string, // Generated conversation ID for new conversation
-  searchType?: 'new_topic' | 'followup' // Search type for non-new conversations
+  searchType?: 'new_topic' | 'followup', // Search type for non-new conversations
+  pageIdx?: number,
+  screenId?: string,
+  tabIdx?: number
 ): Promise<string> => {
   try {
     const workspaceId = getWorkspaceId();
@@ -233,12 +236,12 @@ export const submitQuickSearchQuery = async (
             webpagesCount: interactiveData?.interactive_content?.related_webpages?.length
           });
           
-          // Store interactive data for the sidebar
-          const tabId = window.location.pathname + window.location.search;
+          // Store interactive data for the sidebar with proper tab isolation
+          const tabId = `${pageIdx}-${screenId}-${tabIdx}`;
           localStorage.setItem(`deeplearn_interactive_${tabId}`, JSON.stringify(interactiveData));
           console.log('💾 Stored interactive data to localStorage with key:', `deeplearn_interactive_${tabId}`);
           
-          // Trigger event to update sidebar
+          // Trigger event to update sidebar with tab-specific data
           window.dispatchEvent(new CustomEvent('deeplearn-interactive-update', {
             detail: { tabId, data: interactiveData }
           }));
