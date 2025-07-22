@@ -71,7 +71,11 @@ export const getProblemSolverHistory = async (): Promise<GetProblemSolverHistory
     }
 
     const data: GetProblemSolverHistoryResponse = await response.json();
-    console.log('✅ Successfully fetched problem solver history:', data);
+    console.log('✅ Successfully fetched problem solver history:', {
+      success: data.success,
+      totalConversations: data.total_conversations,
+      itemsCount: data.problem_solver_conversations.items.length
+    });
     return data;
   } catch (error) {
     console.error('❌ Get problem solver history API error:', error);

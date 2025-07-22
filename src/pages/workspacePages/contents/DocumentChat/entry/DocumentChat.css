@@ -581,9 +581,9 @@
   padding: 2px 4px 2px 3px;
   align-items: center;
   gap: 1px;
-  flex: 1;
+  width: fit-content;
   min-width: 60px;
-  max-width: 129px;
+  max-width: 200px;
   background: hsla(210, 36%, 95%, 1);
   border-radius: 4px;
   overflow: hidden;

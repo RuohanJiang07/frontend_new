@@ -4,12 +4,14 @@ import './ProblemHelpResponse.css';
 import { MarkdownRenderer } from '../../../../../components/ui/markdown';
 import { submitProblemSolverSolution } from '../../../../../api/workspaces/problem_help/ProblemHelpMain';
 import { useToast } from '../../../../../hooks/useToast';
+import { getProblemSolverHistoryConversation, ProblemSolverHistoryItem } from '../../../../../api/workspaces/problem_help/getHistory';
 
 interface ProblemHelpResponseProps {
   onBack: () => void;
   tabIdx?: number;
   pageIdx?: number;
   screenId?: string;
+  uniqueTabId?: string;
 }
 
 // Conversation message interface
@@ -26,7 +28,7 @@ interface ConversationMessage {
   }>;
 }
 
-const ProblemHelpResponse: React.FC<ProblemHelpResponseProps> = ({ onBack, tabIdx = 0, pageIdx = 0, screenId = '' }) => {
+const ProblemHelpResponse: React.FC<ProblemHelpResponseProps> = ({ onBack, tabIdx = 0, pageIdx = 0, screenId = '', uniqueTabId }) => {
   const { switchToProblemHelp, getActiveScreens, activePage } = useTabContext();
   const { error, success } = useToast();
   
@@ -91,67 +93,72 @@ const ProblemHelpResponse: React.FC<ProblemHelpResponseProps> = ({ onBack, tabId
 
   // Load saved data for this tab and initialize conversation history
   useEffect(() => {
-    const tabId = window.location.pathname + window.location.search;
-    const historyDataString = localStorage.getItem(`problemhelp_history_data_${tabId}`);
+    // Use the provided unique tab ID
+    const tabId = uniqueTabId || `${pageIdx}-${screenId}-${tabIdx}`;
     const isHistoryLoaded = localStorage.getItem(`problemhelp_history_loaded_${tabId}`) === 'true';
+    const savedConversationId = localStorage.getItem(`problemhelp_conversation_${tabId}`);
     
     console.log('🔍 Loading conversation data for tab:', tabId);
 
     // Check if this is a loaded history conversation
-    if (isHistoryLoaded && historyDataString) {
+    if (isHistoryLoaded && savedConversationId) {
       console.log('📂 Loading history conversation data for tab:', tabId);
       
-      try {
-        const historyData: any[] = JSON.parse(historyDataString);
-        setLoadedHistoryData(historyData);
-        setIsHistoryConversation(true);
-        
-        const savedConversationId = localStorage.getItem(`problemhelp_conversation_${tabId}`);
-        if (savedConversationId) {
-          setConversationId(savedConversationId);
-          console.log('🆔 Set conversation ID from history:', savedConversationId);
-        }
-        
-        // Convert history data to conversation messages
-        const messages: ConversationMessage[] = [];
-        
-        historyData.forEach((item, index) => {
-          // Add user message
-          messages.push({
-            id: `history-user-${index}`,
-            type: 'user',
-            content: item.user_query,
-            timestamp: new Date(item.time).toLocaleString()
-          });
+      // Load the full conversation from the API
+      const loadHistoryConversation = async () => {
+        try {
+          const response = await getProblemSolverHistoryConversation(savedConversationId);
           
-          // Add assistant message if response exists
-          if (item.llm_response) {
-            const { cleanContent, concepts } = extractConcepts(item.llm_response);
-            messages.push({
-              id: `history-assistant-${index}`,
-              type: 'assistant',
-              content: cleanContent,
-              timestamp: 'Assistant',
-              concepts
+          if (response.success && response.conversation_json) {
+            setLoadedHistoryData(response.conversation_json);
+            setIsHistoryConversation(true);
+            setConversationId(savedConversationId);
+            console.log('🆔 Set conversation ID from history:', savedConversationId);
+            
+            // Convert history data to conversation messages
+            const messages: ConversationMessage[] = [];
+            
+            response.conversation_json.forEach((item: ProblemSolverHistoryItem, index) => {
+              // Add user message
+              messages.push({
+                id: `history-user-${index}`,
+                type: 'user',
+                content: item.user_query,
+                timestamp: new Date(item.time).toLocaleString()
+              });
+              
+              // Add assistant message if response exists
+              if (item.llm_response) {
+                const { cleanContent, concepts } = extractConcepts(item.llm_response);
+                messages.push({
+                  id: `history-assistant-${index}`,
+                  type: 'assistant',
+                  content: cleanContent,
+                  timestamp: 'Assistant',
+                  concepts: concepts
+                });
+              }
             });
+            
+            setConversationHistory(messages);
+            console.log('✅ Loaded history conversation with', messages.length, 'messages');
+          } else {
+            console.error('Failed to load history conversation:', response.message);
+            error('Failed to load conversation history');
           }
-        });
-        
-        setConversationHistory(messages);
-        console.log('✅ Loaded history conversation with', messages.length, 'messages');
-        
-        // Exit early for history conversations - don't load any streaming data
-        return;
-      } catch (error) {
-        console.error('❌ Error parsing history data:', error);
-        // If parsing fails, clear the history flags and fall through to normal loading
-        localStorage.removeItem(`problemhelp_history_data_${tabId}`);
-        localStorage.removeItem(`problemhelp_history_loaded_${tabId}`);
-      }
+        } catch (error) {
+          console.error('❌ Error loading history conversation:', error);
+          error('Failed to load conversation history');
+          // Clear the history flags and fall through to normal loading
+          localStorage.removeItem(`problemhelp_history_loaded_${tabId}`);
+        }
+      };
+      
+      loadHistoryConversation();
+      return; // Exit early for history conversations
     }
     
-    // ONLY load conversation ID from localStorage - NEVER generate here
-    const savedConversationId = localStorage.getItem(`problemhelp_conversation_${tabId}`);
+    // For non-history conversations, load conversation ID from localStorage
     if (savedConversationId) {
       setConversationId(savedConversationId);
       console.log('🆔 Loaded conversation ID from localStorage:', savedConversationId);
@@ -241,7 +248,7 @@ const ProblemHelpResponse: React.FC<ProblemHelpResponseProps> = ({ onBack, tabId
     } else {
       console.log('No saved data found, using defaults');
     }
-  }, []);
+  }, [error, pageIdx, screenId, tabIdx]);
 
   // Handle submitting follow-up question
   const handleSubmitFollowUp = async () => {
@@ -390,9 +397,24 @@ const ProblemHelpResponse: React.FC<ProblemHelpResponseProps> = ({ onBack, tabId
       );
     }
 
-    // Assistant message - extract concepts from current content
+    // Assistant message - use stored concepts or extract from current content
     const currentContent = message.streamingContent || message.content;
-    const { cleanContent, concepts } = extractConcepts(currentContent);
+    
+    // For history messages, use the pre-extracted concepts and content
+    // For streaming messages, extract concepts from current content
+    let cleanContent: string;
+    let concepts: Array<{ title: string; explanation: string }>;
+    
+    if (message.concepts && message.id.startsWith('history-assistant-')) {
+      // Use pre-extracted concepts and content for history messages
+      cleanContent = currentContent;
+      concepts = message.concepts;
+    } else {
+      // Extract concepts for new/streaming messages
+      const extracted = extractConcepts(currentContent);
+      cleanContent = extracted.cleanContent;
+      concepts = extracted.concepts;
+    }
 
     return (
       <div className="problem-help-response-answer">
@@ -577,10 +599,34 @@ const ProblemHelpResponse: React.FC<ProblemHelpResponseProps> = ({ onBack, tabId
             
             {/* Show empty state if no conversation yet */}
             {conversationHistory.length === 0 && (
-              <div className="flex flex-col items-center justify-center py-12 text-gray-500">
-                <div className="text-lg font-medium mb-2">Start solving problems</div>
-                <div className="text-sm text-center max-w-md">
-                  Ask questions about problems you need help solving using the input box below.
+              <div className="space-y-6">
+                {/* Loading skeleton for conversation */}
+                <div className="flex flex-col items-end gap-2">
+                  <div className="w-24 h-4 bg-gray-200 rounded animate-pulse"></div>
+                  <div className="w-80 h-16 bg-gray-200 rounded-lg animate-pulse"></div>
+                </div>
+                
+                <div className="space-y-4">
+                  <div className="flex items-center gap-3">
+                    <div className="w-32 h-5 bg-gray-200 rounded animate-pulse"></div>
+                    <div className="w-16 h-4 bg-gray-200 rounded animate-pulse"></div>
+                  </div>
+                  
+                  <div className="w-full h-px bg-gray-200 animate-pulse"></div>
+                  
+                  <div className="space-y-3">
+                    <div className="w-full h-4 bg-gray-200 rounded animate-pulse"></div>
+                    <div className="w-full h-4 bg-gray-200 rounded animate-pulse"></div>
+                    <div className="w-4/5 h-4 bg-gray-200 rounded animate-pulse"></div>
+                    <div className="w-full h-4 bg-gray-200 rounded animate-pulse"></div>
+                    <div className="w-3/4 h-4 bg-gray-200 rounded animate-pulse"></div>
+                  </div>
+                  
+                  <div className="flex justify-end gap-2 mt-4">
+                    <div className="w-6 h-6 bg-gray-200 rounded animate-pulse"></div>
+                    <div className="w-6 h-6 bg-gray-200 rounded animate-pulse"></div>
+                    <div className="w-6 h-6 bg-gray-200 rounded animate-pulse"></div>
+                  </div>
                 </div>
               </div>
             )}

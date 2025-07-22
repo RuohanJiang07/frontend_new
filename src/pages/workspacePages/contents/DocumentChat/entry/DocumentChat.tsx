@@ -6,6 +6,7 @@ import { getDriveFiles, TransformedDriveItem } from '../../../../../api/workspac
 import { useEffect } from 'react';
 import { useToast } from '../../../../../hooks/useToast';
 import { UploadModal } from '../../../../../components/workspacePage/uploadModal';
+import { getDocumentChatHistory, DocumentChatConversation } from '../../../../../api/workspaces/document_chat/getHistory';
 
 // Interface for document tags
 interface DocumentTag {
@@ -14,66 +15,6 @@ interface DocumentTag {
   type: 'pdf' | 'doc' | 'txt' | 'other';
   file_type?: string; // Add original file_type from backend
 }
-
-// Sample history data
-const SAMPLE_DOCUMENT_HISTORY = [
-  {
-    id: '1',
-    title: 'Illiad and Odyssey by Homer',
-    fileNumber: 3,
-    fileName: 'climate_research.pdf',
-    date: 'Apr 15, 2025, 9:12 AM'
-  },
-  {
-    id: '2',
-    title: 'Symposium by Plato',
-    fileNumber: 2,
-    fileName: 'ml_nlp_guide.docx',
-    date: 'Apr 14, 2025, 2:30 PM'
-  },
-  {
-    id: '3',
-    title: 'Google Scholar paper summary',
-    fileNumber: 5,
-    fileName: 'renewable_energy_report.pdf',
-    date: 'Apr 13, 2025, 11:18 AM'
-  },
-  {
-    id: '4',
-    title: 'Comparative study of blockchain applications in supply chain management',
-    fileNumber: 4,
-    fileName: 'blockchain_supply_chain.pdf',
-    date: 'Apr 12, 2025, 4:05 PM'
-  },
-  {
-    id: '5',
-    title: 'Healthcare data privacy regulations and compliance requirements',
-    fileNumber: 3,
-    fileName: 'healthcare_privacy.docx',
-    date: 'Apr 11, 2025, 1:40 PM'
-  },
-  {
-    id: '6',
-    title: 'Urban planning strategies for sustainable city development',
-    fileNumber: 6,
-    fileName: 'urban_planning_guide.pdf',
-    date: 'Apr 10, 2025, 3:20 PM'
-  },
-  {
-    id: '7',
-    title: 'Quantum computing applications in cryptography and security',
-    fileNumber: 2,
-    fileName: 'quantum_crypto_research.pdf',
-    date: 'Apr 9, 2025, 10:15 AM'
-  },
-  {
-    id: '8',
-    title: 'Environmental impact assessment of industrial waste management',
-    fileNumber: 4,
-    fileName: 'waste_management_study.pdf',
-    date: 'Apr 8, 2025, 2:45 PM'
-  }
-];
 
 interface DocumentChatProps {
   isSplit?: boolean;
@@ -95,11 +36,49 @@ function DocumentChat({ isSplit = false, onBack, onViewChange, tabIdx = 0, pageI
   const [availableFiles, setAvailableFiles] = useState<TransformedDriveItem[]>([]);
   const [loadingFiles, setLoadingFiles] = useState(false);
   const [isUploadModalOpen, setIsUploadModalOpen] = useState(false);
+  const [historyItems, setHistoryItems] = useState<DocumentChatConversation[]>([]);
+  const [loadingHistory, setLoadingHistory] = useState(true);
+  const [driveFiles, setDriveFiles] = useState<TransformedDriveItem[]>([]);
 
   // Load available files from drive when component mounts
   useEffect(() => {
     loadAvailableFiles();
+    loadHistoryData();
+    loadDriveFiles();
   }, []);
+
+  // Load drive files for file name resolution
+  const loadDriveFiles = async () => {
+    try {
+      const response = await getDriveFiles();
+      if (response.success && response.data) {
+        setDriveFiles(response.data);
+        console.log('📁 Loaded drive files for name resolution:', response.data.length);
+      }
+    } catch (err) {
+      console.error('Error loading drive files for name resolution:', err);
+    }
+  };
+
+  // Load history data when component mounts
+  const loadHistoryData = async () => {
+    try {
+      setLoadingHistory(true);
+      const response = await getDocumentChatHistory();
+      
+      if (response.success) {
+        setHistoryItems(response.document_chat_conversations.items);
+        console.log('📂 Loaded document chat history:', response.document_chat_conversations.items.length, 'conversations');
+      } else {
+        console.warn('Failed to load document chat history');
+      }
+    } catch (err) {
+      console.error('Error loading document chat history:', err);
+      // Don't show error to user, just use empty state
+    } finally {
+      setLoadingHistory(false);
+    }
+  };
 
   const loadAvailableFiles = async () => {
     try {
@@ -185,28 +164,24 @@ function DocumentChat({ isSplit = false, onBack, onViewChange, tabIdx = 0, pageI
     switchToDocumentChatResponse(pageIdx, screenId, tabIdx);
   };
 
-  const handleHistoryCardClick = (item: any) => {
-    // For history items, get the actual file info
-    const tabId = window.location.pathname + window.location.search;
-    const hardcodedFileIds = ["file-1bcf6d47fc704e63bf6b754b88668b08"];
+  const handleHistoryCardClick = (item: DocumentChatConversation) => {
+    // Generate a unique tab ID for this specific tab instance
+    const tabId = `${pageIdx}-${screenId}-${tabIdx}`;
     
-    // Try to get actual file info
-    const foundFile = availableFiles.find(file => file.id === hardcodedFileIds[0]);
-    const hardcodedDocs: DocumentTag[] = foundFile ? [{
-      id: foundFile.id,
-      name: foundFile.name,
-      type: mapFileTypeToDocumentType(foundFile.fileType || 'pdf'),
-      file_type: foundFile.fileType || 'pdf' // Add the original file_type
-    }] : [{
-      id: hardcodedFileIds[0],
-      name: 'Document File',
-      type: 'pdf',
-      file_type: 'pdf' // Add the original file_type
-    }];
+    // Store the conversation ID for loading the full conversation
+    localStorage.setItem(`documentchat_conversation_${tabId}`, item.conversation_id);
     
-    localStorage.setItem(`documentchat_selected_files_${tabId}`, JSON.stringify(hardcodedFileIds));
-    localStorage.setItem(`documentchat_selected_documents_${tabId}`, JSON.stringify(hardcodedDocs));
-    localStorage.setItem(`documentchat_history_item_${tabId}`, JSON.stringify(item));
+    // Mark this as a history conversation that needs to be loaded
+    localStorage.setItem(`documentchat_history_loaded_${tabId}`, 'true');
+    
+    // Clear any existing data
+    localStorage.removeItem(`documentchat_history_data_${tabId}`);
+    localStorage.removeItem(`documentchat_streaming_content_${tabId}`);
+    localStorage.removeItem(`documentchat_streaming_complete_${tabId}`);
+    localStorage.removeItem(`documentchat_selected_files_${tabId}`);
+    localStorage.removeItem(`documentchat_selected_documents_${tabId}`);
+    
+    // Navigate to the response page
     
     switchToDocumentChatResponse(pageIdx, screenId, tabIdx);
   };
@@ -263,6 +238,45 @@ function DocumentChat({ isSplit = false, onBack, onViewChange, tabIdx = 0, pageI
         return 'other';
     }
   };
+
+  // Helper function to format date
+  const formatDate = (dateString: string): string => {
+    const date = new Date(dateString);
+    return date.toLocaleDateString('en-US', {
+      year: 'numeric',
+      month: 'short',
+      day: 'numeric',
+      hour: '2-digit',
+      minute: '2-digit'
+    });
+  };
+
+  // Helper function to get real file name from file ID
+  const getRealFileName = (fileId: string): string => {
+    const driveFile = driveFiles.find(file => file.id === fileId);
+    if (driveFile) {
+      return driveFile.name;
+    }
+    // Fallback: show truncated file ID
+    return `Document (${fileId.substring(0, 8)}...)`;
+  };
+
+  // Helper function to get real file type from file ID
+  const getRealFileType = (fileId: string): string => {
+    const driveFile = driveFiles.find(file => file.id === fileId);
+    if (driveFile && driveFile.fileType) {
+      return driveFile.fileType;
+    }
+    // Fallback to pdf
+    return 'pdf';
+  };
+
+  // Filter history based on search query
+  const filteredHistory = historyItems
+    .filter(item =>
+      item.title.toLowerCase().includes(searchQuery.toLowerCase())
+    )
+    .sort((a, b) => new Date(b.created_at).getTime() - new Date(a.created_at).getTime()); // Sort by latest first
 
   return (
     <div className="document-chat-container">
@@ -409,47 +423,78 @@ function DocumentChat({ isSplit = false, onBack, onViewChange, tabIdx = 0, pageI
 
       {/* History Content Section */}
       <div className={`document-chat-cards-container ${isSplit ? 'split' : ''}`}>
-        {SAMPLE_DOCUMENT_HISTORY.map((item) => (
-          <div 
-            key={item.id} 
-            className="document-chat-card cursor-pointer hover:shadow-md transition-shadow"
-            onClick={() => handleHistoryCardClick(item)}
-          >
-            <div className="document-chat-card-title">
-              {item.title}
-            </div>
-            <div className="document-chat-card-detail">
-              <div className="document-chat-file-number">
-                {item.fileNumber} files
-              </div>
-              <div className="document-chat-file-info">
-                <div className="document-chat-file-name-box">
-                  <img
-                    src="/workspace/fileIcons/pdf.svg"
-                    alt="File"
-                    className="document-chat-file-icon"
-                  />
-                  <span className="document-chat-file-name">
-                    {item.fileName}
-                  </span>
+        {loadingHistory ? (
+          // Loading skeleton cards
+          Array.from({ length: 9 }).map((_, index) => (
+            <div key={`loading-${index}`} className="document-chat-card">
+              <div className="w-full h-[58px] bg-gray-200 rounded animate-pulse mb-4"></div>
+              <div className="document-chat-card-detail">
+                <div className="w-16 h-4 bg-gray-200 rounded animate-pulse mb-2"></div>
+                <div className="document-chat-file-info">
+                  <div className="w-20 h-4 bg-gray-200 rounded animate-pulse"></div>
+                  <div className="w-16 h-3 bg-gray-200 rounded animate-pulse"></div>
                 </div>
-                <span className="document-chat-more-files">
-                  and {item.fileNumber - 1} more...
-                </span>
+                <div className="w-24 h-4 bg-gray-200 rounded animate-pulse"></div>
               </div>
-              <div className="document-chat-card-date">
-                <img
-                  src="/workspace/problemHelp/calendar.svg"
-                  alt="Calendar"
-                  className="document-chat-card-date-icon"
-                />
-                <span className="document-chat-card-date-text">
-                  {item.date}
-                </span>
-              </div>
+            </div>
+          ))
+        ) : filteredHistory.length === 0 ? (
+          <div className="col-span-full flex flex-col items-center justify-center py-12 text-gray-500">
+            <div className="text-lg font-medium mb-2">No document chat history found</div>
+            <div className="text-sm text-center max-w-md">
+              {searchQuery ? 'Try adjusting your search criteria' : 'Start chatting with documents to see your history here'}
             </div>
           </div>
-        ))}
+        ) : (
+          filteredHistory.map((item) => (
+            <div 
+              key={item.conversation_id} 
+              className="document-chat-card cursor-pointer hover:shadow-md transition-shadow"
+              onClick={() => handleHistoryCardClick(item)}
+            >
+              <div className="document-chat-card-title">
+                {item.title}
+              </div>
+              <div className="document-chat-card-detail">
+                <div className="document-chat-file-number">
+                  {item.references_selected.length} files
+                </div>
+                <div className="document-chat-file-info">
+                  <div className="document-chat-file-name-box">
+                    <img
+                      src={`/workspace/fileIcons/${getRealFileType(item.references_selected[0]) === 'docx' ? 'txt' : getRealFileType(item.references_selected[0])}.svg`}
+                      alt="File"
+                      className="document-chat-file-icon"
+                      onError={(e) => {
+                        // Fallback to generic file icon if specific icon fails to load
+                        const target = e.target as HTMLImageElement;
+                        target.src = '/workspace/file_icon.svg';
+                      }}
+                    />
+                    <span className="document-chat-file-name">
+                      {getRealFileName(item.references_selected[0])}
+                    </span>
+                  </div>
+                  {item.references_selected.length > 1 && (
+                    <span className="document-chat-more-files">
+                      and {item.references_selected.length - 1} more...
+                    </span>
+                  )}
+                </div>
+                <div className="document-chat-card-date">
+                  <img
+                    src="/workspace/problemHelp/calendar.svg"
+                    alt="Calendar"
+                    className="document-chat-card-date-icon"
+                  />
+                  <span className="document-chat-card-date-text">
+                    {formatDate(item.created_at)}
+                  </span>
+                </div>
+              </div>
+            </div>
+          ))
+        )}
       </div>
 
       {/* Upload Modal */}

@@ -4,6 +4,8 @@ import './DocumentChatResponse.css';
 import { submitDocumentChatQuery } from '../../../../../api/workspaces/document_chat/DocumentChatMain';
 import { useToast } from '../../../../../hooks/useToast';
 import { MarkdownRenderer } from '../../../../../components/ui/markdown';
+import { getDocumentChatHistoryConversation, DocumentChatHistoryItem } from '../../../../../api/workspaces/document_chat/getHistory';
+import { getDriveFiles } from '../../../../../api/workspaces/drive/getFiles';
 
 interface DocumentChatResponseProps {
   isSplit?: boolean;
@@ -41,6 +43,9 @@ const DocumentChatResponse: React.FC<DocumentChatResponseProps> = ({ isSplit = f
   const [isSubmitting, setIsSubmitting] = useState(false);
   const [conversationId, setConversationId] = useState<string>('');
   const [conversationHistory, setConversationHistory] = useState<ConversationMessage[]>([]);
+  const [loadedHistoryData, setLoadedHistoryData] = useState<DocumentChatHistoryItem[] | null>(null);
+  const [isHistoryConversation, setIsHistoryConversation] = useState(false);
+  const [driveFiles, setDriveFiles] = useState<any[]>([]);
 
   // Detect if we're in split screen mode
   const activeScreens = getActiveScreens(activePage);
@@ -68,12 +73,118 @@ const DocumentChatResponse: React.FC<DocumentChatResponseProps> = ({ isSplit = f
 
   // Load selected references and initialize conversation when component mounts
   useEffect(() => {
-    const tabId = window.location.pathname + window.location.search;
+    // Load drive files first to get file names
+    const loadDriveFiles = async () => {
+      try {
+        const response = await getDriveFiles();
+        if (response.success && response.data) {
+          setDriveFiles(response.data);
+        }
+      } catch (error) {
+        console.error('Error loading drive files:', error);
+      }
+    };
+    
+    loadDriveFiles();
+    
+    const tabId = `${pageIdx}-${screenId}-${tabIdx}`;
+    const isHistoryLoaded = localStorage.getItem(`documentchat_history_loaded_${tabId}`) === 'true';
+    const savedConversationId = localStorage.getItem(`documentchat_conversation_${tabId}`);
+    
+    console.log('🔍 Loading conversation data for tab:', tabId);
+
+    // Check if this is a loaded history conversation
+    if (isHistoryLoaded && savedConversationId) {
+      console.log('📂 Loading history conversation data for tab:', tabId);
+      
+      // Load the full conversation from the API
+      const loadHistoryConversation = async () => {
+        try {
+          const response = await getDocumentChatHistoryConversation(savedConversationId);
+          
+          if (response.success && response.conversation_json) {
+            setLoadedHistoryData(response.conversation_json);
+            setIsHistoryConversation(true);
+            setConversationId(savedConversationId);
+            console.log('🆔 Set conversation ID from history:', savedConversationId);
+            
+            // Convert history data to conversation messages
+            const messages: ConversationMessage[] = [];
+            
+            response.conversation_json.forEach((item: DocumentChatHistoryItem, index) => {
+              // Add user message
+              messages.push({
+                id: `history-user-${index}`,
+                type: 'user',
+                content: item.user_query,
+                timestamp: new Date(item.time).toLocaleString()
+              });
+              
+              // Add assistant message if response exists
+              if (item.llm_response) {
+                messages.push({
+                  id: `history-assistant-${index}`,
+                  type: 'assistant',
+                  content: item.llm_response,
+                  timestamp: 'Assistant'
+                });
+              }
+            });
+            
+            setConversationHistory(messages);
+            console.log('✅ Loaded history conversation with', messages.length, 'messages');
+            
+            // Set up file list based on references from the first history item
+            if (response.conversation_json.length > 0) {
+              const firstItem = response.conversation_json[0];
+              const referencedFileIds = firstItem.references_selected || [];
+              
+              // Create file items from referenced files with real names
+              const fileItems: FileItem[] = referencedFileIds.map((fileId) => {
+                // Find the actual file in driveFiles
+                const driveFile = driveFiles.find(file => file.id === fileId);
+                
+                if (driveFile) {
+                  return {
+                    id: fileId,
+                    name: driveFile.name,
+                    icon: getCorrectIconPath(driveFile.fileType || 'pdf'),
+                    checked: true
+                  };
+                } else {
+                  // Fallback if file not found in drive
+                  return {
+                    id: fileId,
+                    name: `Document (${fileId.substring(0, 8)}...)`,
+                    icon: '/workspace/fileIcons/pdf.svg',
+                    checked: true
+                  };
+                }
+              });
+              
+              setFiles(fileItems);
+              setSelectAll(fileItems.length > 0);
+              console.log('📁 Set up file list from history references:', fileItems);
+            }
+          } else {
+            console.error('Failed to load history conversation:', response.message);
+            error('Failed to load conversation history');
+          }
+        } catch (error) {
+          console.error('❌ Error loading history conversation:', error);
+          error('Failed to load conversation history');
+          // Clear the history flags and fall through to normal loading
+          localStorage.removeItem(`documentchat_history_loaded_${tabId}`);
+        }
+      };
+      
+      loadHistoryConversation();
+      return; // Exit early for history conversations
+    }
     
     // Load selected files from localStorage
     const selectedFilesString = localStorage.getItem(`documentchat_selected_files_${tabId}`);
     const selectedDocumentsString = localStorage.getItem(`documentchat_selected_documents_${tabId}`);
-    const historyItemString = localStorage.getItem(`documentchat_history_item_${tabId}`);
     
     if (selectedFilesString && selectedDocumentsString) {
       try {
@@ -102,13 +213,18 @@ const DocumentChatResponse: React.FC<DocumentChatResponseProps> = ({ isSplit = f
           }
         };
         
-        // Convert to FileItem format
-        const fileItems: FileItem[] = selectedDocuments.map(doc => ({
-          id: doc.id,
-          name: doc.name,
-          icon: getCorrectIconPath(doc.file_type || doc.type || 'pdf'),
-          checked: true // All selected files are checked by default
-        }));
+        // Convert to FileItem format with real file names
+        const fileItems: FileItem[] = selectedDocuments.map(doc => {
+          // Find the actual file in driveFiles for more accurate information
+          const driveFile = driveFiles.find(file => file.id === doc.id);
+          
+          return {
+            id: doc.id,
+            name: driveFile ? driveFile.name : doc.name,
+            icon: getCorrectIconPath(driveFile ? driveFile.fileType : (doc.file_type || doc.type || 'pdf')),
+            checked: true // All selected files are checked by default
+          };
+        });
         
         setFiles(fileItems);
         setSelectAll(fileItems.length > 0);
@@ -116,37 +232,12 @@ const DocumentChatResponse: React.FC<DocumentChatResponseProps> = ({ isSplit = f
         console.log('📁 Loaded selected files for document chat:', fileItems);
         
         // Generate or load conversation ID
-        let currentConversationId = localStorage.getItem(`documentchat_conversation_${tabId}`);
+        let currentConversationId = savedConversationId;
         if (!currentConversationId) {
           currentConversationId = generateConversationId();
           localStorage.setItem(`documentchat_conversation_${tabId}`, currentConversationId);
         }
         setConversationId(currentConversationId);
-        
-        // If this is from a history item, add initial conversation
-        if (historyItemString) {
-          try {
-            const historyItem = JSON.parse(historyItemString);
-            const initialUserMessage: ConversationMessage = {
-              id: 'history-user-1',
-              type: 'user',
-              content: `What are the main findings in ${historyItem.title}?`,
-              timestamp: 'Me, ' + new Date().toLocaleString()
-            };
-            
-            const initialAssistantMessage: ConversationMessage = {
-              id: 'history-assistant-1',
-              type: 'assistant',
-              content: `Based on the document "${historyItem.title}", here are the main findings...`,
-              timestamp: 'Assistant',
-              isStreaming: false
-            };
-            
-            setConversationHistory([initialUserMessage, initialAssistantMessage]);
-          } catch (e) {
-            console.error('Error parsing history item:', e);
-          }
-        }
         
       } catch (e) {
         console.error('Error loading selected files:', e);
@@ -156,7 +247,29 @@ const DocumentChatResponse: React.FC<DocumentChatResponseProps> = ({ isSplit = f
       console.warn('No selected files found in localStorage');
       error('No references selected. Please go back and select references first.');
     }
-  }, [error]);
+  }, [error, pageIdx, screenId, tabIdx, driveFiles]);
+
+  // Helper function to get correct icon path
+  const getCorrectIconPath = (fileType: string) => {
+    const normalizedType = fileType.toLowerCase();
+    switch (normalizedType) {
+      case 'pdf':
+        return '/workspace/fileIcons/pdf.svg';
+      case 'doc':
+      case 'docx':
+        return '/workspace/fileIcons/txt.svg'; // docx files use txt.svg
+      case 'txt':
+      case 'md':
+        return '/workspace/fileIcons/txt.svg';
+      case 'ppt':
+      case 'pptx':
+        return '/workspace/fileIcons/ppt.svg';
+      case 'epub':
+        return '/workspace/fileIcons/epub.svg';
+      default:
+        return '/workspace/file_icon.svg'; // Generic fallback
+    }
+  };
 
   const handleBackClick = () => {
     // Navigate back to document chat entry page
@@ -664,10 +777,34 @@ const DocumentChatResponse: React.FC<DocumentChatResponseProps> = ({ isSplit = f
                 
                 {/* Show empty state if no conversation yet */}
                 {conversationHistory.length === 0 && (
-                  <div className="flex flex-col items-center justify-center py-12 text-gray-500">
-                    <div className="text-lg font-medium mb-2">Start a conversation</div>
-                    <div className="text-sm text-center max-w-md">
-                      Ask questions about your selected documents using the input box below.
+                  <div className="space-y-6">
+                    {/* Loading skeleton for conversation */}
+                    <div className="flex flex-col items-end gap-2">
+                      <div className="w-24 h-4 bg-gray-200 rounded animate-pulse"></div>
+                      <div className="w-80 h-16 bg-gray-200 rounded-lg animate-pulse"></div>
+                    </div>
+                    
+                    <div className="space-y-4">
+                      <div className="flex items-center gap-3">
+                        <div className="w-32 h-5 bg-gray-200 rounded animate-pulse"></div>
+                        <div className="w-16 h-4 bg-gray-200 rounded animate-pulse"></div>
+                      </div>
+                      
+                      <div className="w-full h-px bg-gray-200 animate-pulse"></div>
+                      
+                      <div className="space-y-3">
+                        <div className="w-full h-4 bg-gray-200 rounded animate-pulse"></div>
+                        <div className="w-full h-4 bg-gray-200 rounded animate-pulse"></div>
+                        <div className="w-4/5 h-4 bg-gray-200 rounded animate-pulse"></div>
+                        <div className="w-full h-4 bg-gray-200 rounded animate-pulse"></div>
+                        <div className="w-3/4 h-4 bg-gray-200 rounded animate-pulse"></div>
+                      </div>
+                      
+                      <div className="flex justify-end gap-2 mt-4">
+                        <div className="w-6 h-6 bg-gray-200 rounded animate-pulse"></div>
+                        <div className="w-6 h-6 bg-gray-200 rounded animate-pulse"></div>
+                        <div className="w-6 h-6 bg-gray-200 rounded animate-pulse"></div>
+                      </div>
                     </div>
                   </div>
                 )}
