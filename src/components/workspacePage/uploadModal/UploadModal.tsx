@@ -64,7 +64,7 @@ const UploadModal: React.FC<UploadModalProps> = ({ isOpen, onClose, onUpload }) 
     if (websiteCount > 0) parts.push(`& ${websiteCount} Websites selected`);
     if (pasteCount > 0) parts.push(`${pasteCount} Text content added`);
     
-    return parts.join(', ') || 'No files ready';
+    return parts.join(', ') || 'No files selected';
   };
 
   const hasCompletedFiles = selectedFiles.some(file => 
@@ -143,7 +143,7 @@ const UploadModal: React.FC<UploadModalProps> = ({ isOpen, onClose, onUpload }) 
         {/* Main Content */}
         <div className="flex flex-1 overflow-hidden">
           {/* Left Sidebar */}
-          <div className="w-48 border-r border-gray-200" style={{ padding: '28px 16px 16px 16px' }}>
+          <div className="w-48 border-r border-gray-200" style={{ padding: '18px 16px 16px 16px' }}>
             <div className="space-y-1">
               {sources.map((source) => {
                 const isSelected = selectedSource === source;
