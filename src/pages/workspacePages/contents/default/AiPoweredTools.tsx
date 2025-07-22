@@ -43,7 +43,7 @@ interface AiPoweredToolsProps {
 }
 
 const AiPoweredTools: React.FC<AiPoweredToolsProps> = ({ tabIdx = 0, pageIdx = 0, screenId = '' }) => {
-    const { switchToDeepLearn, switchToDocumentChat, switchToProblemHelp, switchToNote } = useTabContext();
+    const { switchToDeepLearn, switchToDocumentChat, switchToProblemHelp, switchToNote, switchToDrive } = useTabContext();
 
     const handleDeepLearnClick = () => {
         switchToDeepLearn(pageIdx, screenId, tabIdx);
@@ -59,6 +59,10 @@ const AiPoweredTools: React.FC<AiPoweredToolsProps> = ({ tabIdx = 0, pageIdx = 0
 
     const handleSmartNoteClick = () => {
         switchToNote(pageIdx, screenId, tabIdx);
+    };
+
+    const handleOpenDriveClick = () => {
+        switchToDrive(pageIdx, screenId, tabIdx);
     };
 
     return (
@@ -112,7 +116,12 @@ const AiPoweredTools: React.FC<AiPoweredToolsProps> = ({ tabIdx = 0, pageIdx = 0
                                 <img src="/workspace/default/default-settings.svg" alt="Settings" className="w-20 h-20" />
                             </button>
                             <button className="w-[140%] h-6 rounded bg-[#ECECEC] border border-[#e0e0e0] text-[#222] text-xs font-medium mr-2">Upload</button>
-                            <button className="w-[200%] h-6 rounded bg-[#4C6694] text-white text-xs font-medium shadow">Open Drive</button>
+                            <button 
+                                className="w-[200%] h-6 rounded bg-[#4C6694] text-white text-xs font-medium shadow cursor-pointer hover:bg-[#3a5a7a] transition-colors duration-200" 
+                                onClick={handleOpenDriveClick}
+                            >
+                                Open Drive
+                            </button>
                         </div>
                     </div>
                     <div className="grid grid-cols-3 gap-x-5 gap-y-3 mb-6">

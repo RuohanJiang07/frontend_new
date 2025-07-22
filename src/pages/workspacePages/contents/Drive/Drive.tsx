@@ -1,5 +1,5 @@
 import React, { useState } from 'react';
-import { SearchIcon, MoreHorizontalIcon, UploadIcon, FolderPlusIcon, DownloadIcon } from 'lucide-react';
+import { MoreVerticalIcon, SearchIcon } from 'lucide-react';
 import './Drive.css';
 
 interface DriveItem {
@@ -13,9 +13,13 @@ interface DriveItem {
 
 interface DriveProps {
   onBack?: () => void;
+  onViewChange?: (view: string | null) => void;
+  tabIdx?: number;
+  pageIdx?: number;
+  screenId?: string;
 }
 
-function Drive({ onBack }: DriveProps) {
+function Drive({ tabIdx = 0, pageIdx = 0, screenId = '' }: DriveProps) {
   const [searchQuery, setSearchQuery] = useState('');
 
   // Sample data matching the image
@@ -65,6 +69,13 @@ function Drive({ onBack }: DriveProps) {
       type: 'file',
       fileType: 'docx',
       size: '780KB'
+    },
+    {
+      id: '8',
+      name: 'Study Guide',
+      type: 'file',
+      fileType: 'docx',
+      size: '1.5MB'
     }
   ];
 
@@ -97,9 +108,18 @@ function Drive({ onBack }: DriveProps) {
   return (
     <div className="drive-container">
       <div className="drive-content">
-        {/* Header with title and storage info */}
-        <div className="workspace-drive-header">
-          <h1 className="workspace-drive-title">Workspace Drive</h1>
+        {/* Header Section */}
+        <div className="drive-header">
+          <div className="drive-header-left">
+            <img
+              src="/workspace/drive/folder.svg"
+              alt="Workspace Drive"
+              className="drive-header-icon"
+            />
+            <div className="drive-header-text">
+              <h1 className="drive-title">Workspace Drive</h1>
+            </div>
+          </div>
           <div className="storage-section">
             <div className="storage-info">0.83 GB of 2.0 GB used</div>
             <div className="storage-bar">
@@ -108,79 +128,72 @@ function Drive({ onBack }: DriveProps) {
           </div>
         </div>
 
-        {/* Action Buttons */}
-        <div className="action-buttons">
-          <button className="action-button upload" onClick={handleUpload}>
-            <UploadIcon className="action-button-icon" />
-            <span className="action-button-text">Upload</span>
+        {/* File Management Section */}
+        <div className="file-management-section">
+          <button className="file-management-button" onClick={handleUpload}>
+            <img src="/workspace/drive/upload.svg" alt="Upload" className="file-management-icon" />
+            <span className="file-management-text">Upload</span>
           </button>
-          <button className="action-button" onClick={handleImport}>
-            <DownloadIcon className="action-button-icon" />
-            <span className="action-button-text">Import</span>
+          <button className="file-management-button" onClick={handleImport}>
+            <img src="/workspace/drive/import.svg" alt="Import" className="file-management-icon" />
+            <span className="file-management-text">Import</span>
           </button>
-          <button className="action-button" onClick={handleCreateFolder}>
-            <FolderPlusIcon className="action-button-icon" />
-            <span className="action-button-text">Create Folder</span>
+          <button className="file-management-button" onClick={handleCreateFolder}>
+            <img src="/workspace/drive/create-folder.svg" alt="Create Folder" className="file-management-icon" />
+            <span className="file-management-text">Create Folder</span>
           </button>
         </div>
 
-        {/* Breadcrumb and Search */}
-        <div className="header-controls">
-          <div className="breadcrumb-search-container">
-            <div className="breadcrumb">
-              <span className="breadcrumb-item">My Drive</span>
-              <span className="breadcrumb-separator">/</span>
-              <span className="breadcrumb-item">PHYS 2801</span>
-            </div>
-            
-            <div className="search-container">
-              <SearchIcon className="search-icon" />
-              <input
-                type="text"
-                placeholder="Search in this drive..."
-                className="search-input"
-                value={searchQuery}
-                onChange={(e) => setSearchQuery(e.target.value)}
-              />
-            </div>
+        {/* Drive Files Section Header */}
+        <div className="drive-files-header">
+          <div className="breadcrumb">
+            <span className="breadcrumb-item">My Drive</span>
+            <span className="breadcrumb-separator">/</span>
+            <span className="breadcrumb-item">PHYS 2801</span>
+          </div>
+          
+          <div className="search-container">
+            <SearchIcon className="search-icon" />
+            <input
+              type="text"
+              placeholder="Search in this drive..."
+              className="search-input"
+              value={searchQuery}
+              onChange={(e) => setSearchQuery(e.target.value)}
+            />
           </div>
         </div>
 
-        {/* Files Grid */}
-        <div className="files-grid">
+        {/* Drive Files Grid */}
+        <div className="drive-files-grid">
           {filteredItems.map((item) => (
             <div
               key={item.id}
-              className="file-item"
+              className="drive-file-card"
               onClick={() => handleItemClick(item)}
             >
-              <div className="file-item-header">
-                <img
-                  src={item.type === 'folder' 
-                    ? '/workspace/drive/folder.svg' 
-                    : '/workspace/drive/document.svg'
-                  }
-                  alt={item.type}
-                  className="file-icon"
-                />
-                <button className="file-menu-button" onClick={(e) => e.stopPropagation()}>
-                  <MoreHorizontalIcon size={16} />
-                </button>
-              </div>
+              <img
+                src={item.type === 'folder' 
+                  ? '/workspace/drive/folder.svg' 
+                  : '/workspace/drive/document.svg'
+                }
+                alt={item.type}
+                className="drive-file-icon"
+              />
+              <button className="drive-file-menu-button" onClick={(e) => e.stopPropagation()}>
+                <MoreVerticalIcon size={16} />
+              </button>
               
-              <div className="file-content">
-                <div className="file-name">{item.name}</div>
-                {item.type === 'folder' ? (
-                  <>
-                    <div className="file-type folder">Folder</div>
-                    <div className="file-info">{item.fileCount} Files</div>
-                  </>
-                ) : (
-                  <>
-                    <div className="file-type">{item.fileType}</div>
-                    <div className="file-info">{item.size}</div>
-                  </>
-                )}
+              <div className="drive-file-info">
+                <div className="drive-file-title">{item.name}</div>
+                <div className="drive-file-right">
+                  <div className={`drive-file-tag ${item.type === 'folder' ? 'folder' : ''}`}>
+                    {item.type === 'folder' ? 'Folder' : item.fileType}
+                  </div>
+                  <div className="drive-file-size">
+                    {item.type === 'folder' ? `${item.fileCount} Files` : item.size}
+                  </div>
+                </div>
               </div>
             </div>
           ))}
