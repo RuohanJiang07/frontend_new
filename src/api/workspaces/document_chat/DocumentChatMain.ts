@@ -79,10 +79,10 @@ export const submitDocumentChatQuery = async (
     
     console.log('🆔 Document Chat - Using conversation ID:', conversationId, 'isNew:', isNewConversation);
 
-    // Use selected file IDs or fall back to hardcoded reference
+    // Use selected file IDs or fall back to hardcoded reference for now
     const referencesToUse = selectedFileIds && selectedFileIds.length > 0 
       ? selectedFileIds 
-      : ["file-1bcf6d47fc704e63bf6b754b88668b08"]; // Fallback to hardcoded reference
+      : ["file-1bcf6d47fc704e63bf6b754b88668b08"]; // Hardcoded reference as requested
 
     const requestData: DocumentChatRequest = {
       workspace_id: workspaceId,

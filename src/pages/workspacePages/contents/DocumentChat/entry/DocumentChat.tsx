@@ -2,6 +2,17 @@ import React from 'react';
 import { useState } from 'react';
 import { useTabContext } from '../../../workspaceFrame/TabContext';
 import './DocumentChat.css';
+import { getDriveFiles, DriveFileItem } from '../../../../../api/workspaces/drive/getFiles';
+import { useEffect } from 'react';
+import { useToast } from '../../../../../hooks/useToast';
+
+// Interface for document tags
+interface DocumentTag {
+  id: string;
+  name: string;
+  type: 'pdf' | 'doc' | 'txt' | 'other';
+  file_type?: string; // Add original file_type from backend
+}
 
 // Sample history data
 const SAMPLE_DOCUMENT_HISTORY = [
@@ -74,14 +85,77 @@ interface DocumentChatProps {
 
 function DocumentChat({ isSplit = false, onBack, onViewChange, tabIdx = 0, pageIdx = 0, screenId = '' }: DocumentChatProps) {
   const { switchToDocumentChatResponse } = useTabContext();
+  const { error } = useToast();
   const [isUploadHovered, setIsUploadHovered] = useState(false);
   const [selectedReferences, setSelectedReferences] = useState<string[]>([]);
   const [profileSelected, setProfileSelected] = useState(false);
   const [searchQuery, setSearchQuery] = useState('');
+  const [selectedDocuments, setSelectedDocuments] = useState<DocumentTag[]>([]);
+  const [availableFiles, setAvailableFiles] = useState<DriveFileItem[]>([]);
+  const [loadingFiles, setLoadingFiles] = useState(false);
+
+  // Load available files from drive when component mounts
+  useEffect(() => {
+    loadAvailableFiles();
+  }, []);
+
+  const loadAvailableFiles = async () => {
+    try {
+      setLoadingFiles(true);
+      const response = await getDriveFiles();
+      
+      if (response.success) {
+        // Filter only files (not folders) and only processed files
+        const processedFiles = response.drive_files.items.filter(item => 
+          item.type === 'file' && 
+          item.processed?.embeddings_generated?.done === true
+        );
+        setAvailableFiles(processedFiles);
+        console.log('📁 Loaded available files for document chat:', processedFiles.length);
+      } else {
+        console.warn('Failed to load drive files');
+      }
+    } catch (err) {
+      console.error('Error loading drive files:', err);
+      // Don't show error to user, just use empty state
+    } finally {
+      setLoadingFiles(false);
+    }
+  };
 
   const handleUploadClick = () => {
     // Handle upload functionality here
     console.log('Upload clicked');
+    
+    // Find the hardcoded reference file from available files
+    const hardcodedFileId = 'file-1bcf6d47fc704e63bf6b754b88668b08';
+    const foundFile = availableFiles.find(file => file.id === hardcodedFileId);
+    
+    if (foundFile) {
+      const docToAdd: DocumentTag = {
+        id: foundFile.id,
+        name: foundFile.name,
+        type: mapFileTypeToDocumentType(foundFile.file_type || 'pdf'),
+        file_type: foundFile.file_type || 'pdf' // Preserve original file_type
+      };
+      
+      // Check if it's already selected
+      if (!selectedDocuments.find(doc => doc.id === docToAdd.id)) {
+        setSelectedDocuments(prev => [...prev, docToAdd]);
+      }
+    } else {
+      // Fallback to hardcoded if not found in available files
+      const hardcodedDoc: DocumentTag = {
+        id: hardcodedFileId,
+        name: 'Document File',
+        type: 'pdf',
+        file_type: 'pdf' // Add original file_type
+      };
+      
+      if (!selectedDocuments.find(doc => doc.id === hardcodedDoc.id)) {
+        setSelectedDocuments(prev => [...prev, hardcodedDoc]);
+      }
+    }
   };
 
   const toggleProfile = () => {
@@ -89,11 +163,96 @@ function DocumentChat({ isSplit = false, onBack, onViewChange, tabIdx = 0, pageI
   };
 
   const handleStartConversation = () => {
+    // Save selected references to localStorage for the response page
+    const tabId = window.location.pathname + window.location.search;
+    const selectedFileIds = selectedDocuments.map(doc => doc.id);
+    
+    // Store the selected references and documents for the response page
+    localStorage.setItem(`documentchat_selected_files_${tabId}`, JSON.stringify(selectedFileIds));
+    localStorage.setItem(`documentchat_selected_documents_${tabId}`, JSON.stringify(selectedDocuments));
+    
+    console.log('💾 Saved selected references for document chat:', selectedFileIds);
+    
     switchToDocumentChatResponse(pageIdx, screenId, tabIdx);
   };
 
   const handleHistoryCardClick = (item: any) => {
+    // For history items, get the actual file info
+    const tabId = window.location.pathname + window.location.search;
+    const hardcodedFileIds = ["file-1bcf6d47fc704e63bf6b754b88668b08"];
+    
+    // Try to get actual file info
+    const foundFile = availableFiles.find(file => file.id === hardcodedFileIds[0]);
+    const hardcodedDocs: DocumentTag[] = foundFile ? [{
+      id: foundFile.id,
+      name: foundFile.name,
+      type: mapFileTypeToDocumentType(foundFile.file_type || 'pdf'),
+      file_type: foundFile.file_type || 'pdf' // Add the original file_type
+    }] : [{
+      id: hardcodedFileIds[0],
+      name: 'Document File',
+      type: 'pdf',
+      file_type: 'pdf' // Add the original file_type
+    }];
+    
+    localStorage.setItem(`documentchat_selected_files_${tabId}`, JSON.stringify(hardcodedFileIds));
+    localStorage.setItem(`documentchat_selected_documents_${tabId}`, JSON.stringify(hardcodedDocs));
+    localStorage.setItem(`documentchat_history_item_${tabId}`, JSON.stringify(item));
+    
     switchToDocumentChatResponse(pageIdx, screenId, tabIdx);
+  };
+
+  const removeDocument = (id: string) => {
+    setSelectedDocuments(prev => prev.filter(doc => doc.id !== id));
+  };
+
+  const getDocumentIcon = (type: string) => {
+    // Map file types to icon names (handle specific mappings)
+    const getIconName = (type: string) => {
+      switch (type) {
+        case 'pptx':
+          return 'ppt';
+        case 'docx':
+        case 'txt':
+          return 'txt'; // Both docx and txt use txt.svg
+        case 'doc':
+          return 'txt'; // doc files also use txt.svg
+        default:
+          return type;
+      }
+    };
+    
+    const iconName = getIconName(type);
+    const iconPath = `/workspace/fileIcons/${iconName}.svg`;
+    
+    return (
+      <img 
+        src={iconPath} 
+        alt={`${type} icon`} 
+        className="w-[18px] h-[17.721px] flex-shrink-0"
+        onError={(e) => {
+          // Fallback to generic file icon if specific type not found
+          const target = e.target as HTMLImageElement;
+          target.src = '/workspace/file_icon.svg';
+        }}
+      />
+    );
+  };
+
+  // Helper function to map file types to DocumentTag types
+  const mapFileTypeToDocumentType = (fileType: string): 'pdf' | 'doc' | 'txt' | 'other' => {
+    switch (fileType.toLowerCase()) {
+      case 'pdf':
+        return 'pdf';
+      case 'doc':
+      case 'docx':
+        return 'doc';
+      case 'txt':
+      case 'md':
+        return 'txt';
+      default:
+        return 'other';
+    }
   };
 
   return (
@@ -140,11 +299,34 @@ function DocumentChat({ isSplit = false, onBack, onViewChange, tabIdx = 0, pageI
 
           {/* Selected References Box */}
           <div className="document-chat-references-box">
-            {/* This will be updated with the actual references UI later */}
-            <div className="document-chat-references-placeholder">
-              <span className="text-gray-500 font-['Inter'] text-sm">
-                Selected references will appear here
-              </span>
+            {/* Display the selected documents as reference boxes */}
+            <div className="document-chat-references-container">
+              {selectedDocuments.map((doc) => (
+                <div
+                  key={doc.id}
+                  className="document-chat-reference-box"
+                >
+                  {getDocumentIcon(doc.type)}
+                  <span className="document-chat-reference-name">
+                    {doc.name}
+                  </span>
+                  <img
+                    src="/workspace/documentChat/remove.svg"
+                    alt="Remove"
+                    className="document-chat-remove-icon"
+                    onClick={() => removeDocument(doc.id)}
+                  />
+                </div>
+              ))}
+              
+              {/* Show placeholder when no documents selected */}
+              {selectedDocuments.length === 0 && (
+                <div className="document-chat-references-placeholder">
+                  <span className="text-gray-500 font-['Inter'] text-sm">
+                    Selected references will appear here
+                  </span>
+                </div>
+              )}
             </div>
             
             {/* Profile Button */}
@@ -169,6 +351,11 @@ function DocumentChat({ isSplit = false, onBack, onViewChange, tabIdx = 0, pageI
                 className="document-chat-start-button"
                 onClick={handleStartConversation}
                 title="Start Conversation"
+                disabled={selectedDocuments.length === 0}
+                style={{ 
+                  opacity: selectedDocuments.length === 0 ? 0.5 : 1,
+                  cursor: selectedDocuments.length === 0 ? 'not-allowed' : 'pointer'
+                }}
               >
                 <span className="document-chat-start-text">Start</span>
                 <img 
