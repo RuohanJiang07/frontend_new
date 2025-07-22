@@ -3,6 +3,13 @@ import { useState } from 'react';
 import { useTabContext } from '../../../workspaceFrame/TabContext';
 import './DocumentChat.css';
 
+// Interface for document tags
+interface DocumentTag {
+  id: string;
+  name: string;
+  type: 'pdf' | 'doc' | 'txt' | 'other';
+}
+
 // Sample history data
 const SAMPLE_DOCUMENT_HISTORY = [
   {
@@ -78,10 +85,20 @@ function DocumentChat({ isSplit = false, onBack, onViewChange, tabIdx = 0, pageI
   const [selectedReferences, setSelectedReferences] = useState<string[]>([]);
   const [profileSelected, setProfileSelected] = useState(false);
   const [searchQuery, setSearchQuery] = useState('');
+  const [selectedDocuments, setSelectedDocuments] = useState<DocumentTag[]>([]);
 
   const handleUploadClick = () => {
     // Handle upload functionality here
     console.log('Upload clicked');
+    
+    // For testing purposes, add some sample documents
+    const sampleDocs: DocumentTag[] = [
+      { id: '1', name: 'research_paper.pdf', type: 'pdf' },
+      { id: '2', name: 'documentation.docx', type: 'doc' },
+      { id: '3', name: 'notes.txt', type: 'txt' },
+      { id: '4', name: 'very_long_filename_that_should_be_truncated_with_ellipsis.pdf', type: 'pdf' }
+    ];
+    setSelectedDocuments(sampleDocs);
   };
 
   const toggleProfile = () => {
@@ -94,6 +111,59 @@ function DocumentChat({ isSplit = false, onBack, onViewChange, tabIdx = 0, pageI
 
   const handleHistoryCardClick = (item: any) => {
     switchToDocumentChatResponse(pageIdx, screenId, tabIdx);
+  };
+
+  const removeDocument = (id: string) => {
+    setSelectedDocuments(prev => prev.filter(doc => doc.id !== id));
+  };
+
+  const getDocumentIcon = (type: string) => {
+    // Map file types to icon names (handle specific mappings)
+    const getIconName = (type: string) => {
+      switch (type) {
+        case 'pptx':
+          return 'ppt';
+        case 'docx':
+        case 'txt':
+          return 'txt'; // Both docx and txt use txt.svg
+        case 'doc':
+          return 'txt'; // doc files also use txt.svg
+        default:
+          return type;
+      }
+    };
+    
+    const iconName = getIconName(type);
+    const iconPath = `/workspace/fileIcons/${iconName}.svg`;
+    
+    return (
+      <img 
+        src={iconPath} 
+        alt={`${type} icon`} 
+        className="w-[18px] h-[17.721px] flex-shrink-0"
+        onError={(e) => {
+          // Fallback to generic file icon if specific type not found
+          const target = e.target as HTMLImageElement;
+          target.src = '/workspace/file_icon.svg';
+        }}
+      />
+    );
+  };
+
+  // Helper function to map file types to DocumentTag types
+  const mapFileTypeToDocumentType = (fileType: string): 'pdf' | 'doc' | 'txt' | 'other' => {
+    switch (fileType.toLowerCase()) {
+      case 'pdf':
+        return 'pdf';
+      case 'doc':
+      case 'docx':
+        return 'doc';
+      case 'txt':
+      case 'md':
+        return 'txt';
+      default:
+        return 'other';
+    }
   };
 
   return (
@@ -140,11 +210,34 @@ function DocumentChat({ isSplit = false, onBack, onViewChange, tabIdx = 0, pageI
 
           {/* Selected References Box */}
           <div className="document-chat-references-box">
-            {/* This will be updated with the actual references UI later */}
-            <div className="document-chat-references-placeholder">
-              <span className="text-gray-500 font-['Inter'] text-sm">
-                Selected references will appear here
-              </span>
+            {/* Display the selected documents as reference boxes */}
+            <div className="document-chat-references-container">
+              {selectedDocuments.map((doc) => (
+                <div
+                  key={doc.id}
+                  className="document-chat-reference-box"
+                >
+                  {getDocumentIcon(doc.type)}
+                  <span className="document-chat-reference-name">
+                    {doc.name}
+                  </span>
+                  <img
+                    src="/workspace/documentChat/remove.svg"
+                    alt="Remove"
+                    className="document-chat-remove-icon"
+                    onClick={() => removeDocument(doc.id)}
+                  />
+                </div>
+              ))}
+              
+              {/* Show placeholder when no documents selected */}
+              {selectedDocuments.length === 0 && (
+                <div className="document-chat-references-placeholder">
+                  <span className="text-gray-500 font-['Inter'] text-sm">
+                    Selected references will appear here
+                  </span>
+                </div>
+              )}
             </div>
             
             {/* Profile Button */}
