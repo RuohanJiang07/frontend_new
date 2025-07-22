@@ -440,6 +440,40 @@
   width: 74px;
 }
 
+/* Streaming content styles */
+.streaming-content {
+  display: inline;
+}
+
+.streaming-cursor {
+  display: inline-block;
+  width: 2px;
+  height: 1.2em;
+  background-color: #00276C;
+  animation: blink 1s infinite;
+  margin-left: 2px;
+}
+
+@keyframes blink {
+  0%, 50% { opacity: 1; }
+  51%, 100% { opacity: 0; }
+}
+
+/* Loading spinner for response page */
+.loading-spinner {
+  width: 16px;
+  height: 16px;
+  border: 2px solid #ffffff;
+  border-top: 2px solid transparent;
+  border-radius: 50%;
+  animation: spin 1s linear infinite;
+}
+
+@keyframes spin {
+  0% { transform: rotate(0deg); }
+  100% { transform: rotate(360deg); }
+}
+
 /* Input Section */
 .deep-learn-response-input-section {
   width: 100%;
@@ -663,6 +697,7 @@
   display: flex;
   align-items: center;
   justify-content: center;
+  position: relative;
 }
 
 .deep-learn-response-video-image {
@@ -689,6 +724,17 @@
   white-space: nowrap;
   overflow: hidden;
   text-overflow: ellipsis;
+}
+
+.deep-learn-response-video-title a {
+  color: #4C6694;
+  text-decoration: none;
+  transition: color 0.2s ease;
+}
+
+.deep-learn-response-video-title a:hover {
+  color: #00276C;
+  text-decoration: underline;
 }
 
 .deep-learn-response-video-source {
@@ -768,6 +814,163 @@
   white-space: nowrap;
   overflow: hidden;
   text-overflow: ellipsis;
+}
+
+.deep-learn-response-webpage-title a {
+  color: #4C6694;
+  text-decoration: none;
+  transition: color 0.2s ease;
+}
+
+.deep-learn-response-webpage-title a:hover {
+  color: #00276C;
+  text-decoration: underline;
+}
+
+/* Loading States */
+.video-loading-placeholder {
+  width: 100%;
+  height: 100%;
+  background: #f0f0f0;
+  border-radius: 8px;
+  display: flex;
+  align-items: center;
+  justify-content: center;
+}
+
+.video-loading-spinner {
+  width: 24px;
+  height: 24px;
+  border: 2px solid rgba(76, 102, 148, 0.3);
+  border-top: 2px solid #4C6694;
+  border-radius: 50%;
+  animation: spin 1s linear infinite;
+}
+
+/* Skeleton Loading Animations */
+.skeleton-video-title,
+.skeleton-video-source,
+.skeleton-webpage-title,
+.skeleton-webpage-description {
+  background: linear-gradient(90deg, #f0f0f0 25%, #e0e0e0 50%, #f0f0f0 75%);
+  background-size: 200% 100%;
+  animation: skeleton-loading 1.5s infinite;
+  border-radius: 4px;
+}
+
+.skeleton-video-title {
+  height: 13px;
+  width: 80%;
+  margin-bottom: 4px;
+}
+
+.skeleton-video-source {
+  height: 10px;
+  width: 60%;
+}
+
+.skeleton-webpage-title {
+  height: 13px;
+  width: 90%;
+  margin-bottom: 4px;
+}
+
+.skeleton-webpage-description {
+  height: 11px;
+  width: 100%;
+  margin-bottom: 2px;
+}
+
+.skeleton-webpage-description:last-child {
+  width: 80%;
+}
+
+@keyframes skeleton-loading {
+  0% {
+    background-position: -200% 0;
+  }
+  100% {
+    background-position: 200% 0;
+  }
+}
+
+@keyframes deep-learn-skeleton-loading {
+  0% {
+    background-position: -300px 0;
+  }
+  100% {
+    background-position: 300px 0;
+  }
+}
+
+/* Deep Learn Loading Skeleton */
+.deep-learn-loading-skeleton {
+  display: flex;
+  flex-direction: column;
+  gap: 16px;
+  padding: 20px 0;
+  width: 100%;
+  max-width: 100%;
+  overflow: hidden;
+}
+
+.skeleton-heading {
+  height: 32px;
+  background: linear-gradient(90deg, #f0f0f0 25%, #e0e0e0 50%, #f0f0f0 75%);
+  background-size: 300px 100%;
+  animation: deep-learn-skeleton-loading 3s infinite;
+  border-radius: 4px;
+  width: 60%;
+}
+
+.skeleton-heading.sub {
+  width: 80%;
+  height: 24px;
+  margin-left: 20px;
+}
+
+.skeleton-paragraph {
+  height: 16px;
+  background: linear-gradient(90deg, #f0f0f0 25%, #e0e0e0 50%, #f0f0f0 75%);
+  background-size: 300px 100%;
+  animation: deep-learn-skeleton-loading 4s infinite;
+  border-radius: 4px;
+  width: 100%;
+}
+
+.skeleton-paragraph.short {
+  width: 70%;
+}
+
+.skeleton-paragraph:nth-child(2) {
+  width: 95%;
+}
+
+.skeleton-paragraph:nth-child(3) {
+  width: 85%;
+}
+
+.skeleton-paragraph:nth-child(6) {
+  width: 90%;
+}
+
+.skeleton-paragraph:nth-child(7) {
+  width: 75%;
+}
+
+/* Image shape shadow for deep learn loading */
+.skeleton-image {
+  width: 200px;
+  max-width: 30%;
+  height: 120px;
+  background: linear-gradient(90deg, #f0f0f0 25%, #e0e0e0 50%, #f0f0f0 75%);
+  background-size: 300px 100%;
+  animation: deep-learn-skeleton-loading 4s infinite;
+  border-radius: 8px;
+  float: right;
+  margin: 0 0 20px 20px;
+  shape-outside: margin-box;
+  flex-shrink: 0;
 }
 
 .deep-learn-response-webpage-description {

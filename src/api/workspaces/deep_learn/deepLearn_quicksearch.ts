@@ -117,13 +117,14 @@ const generateConversationId = (): string => {
 export const submitQuickSearchQuery = async (
   query: string,
   webSearch: boolean,
-  additionalComments?: string,
-  references?: string[] | null,
   onData: (data: string) => void,
   onError: (error: string) => void,
   onComplete: () => void,
+  additionalComments?: string,
+  references?: string[] | null,
   existingConversationId?: string, // Existing conversation ID for continuous conversation
-  generatedConversationId?: string // Generated conversation ID for new conversation
+  generatedConversationId?: string, // Generated conversation ID for new conversation
+  searchType?: 'new_topic' | 'followup' // Search type for non-new conversations
 ): Promise<string> => {
   try {
     const workspaceId = getWorkspaceId();
@@ -135,14 +136,18 @@ export const submitQuickSearchQuery = async (
     const conversationId = existingConversationId || generatedConversationId || generateConversationId();
     const isNewConversation = !existingConversationId;
     
+    // Determine search type: new_topic for new conversations, user selection for existing ones
+    const finalSearchType = isNewConversation ? "new_topic" : (searchType || "new_topic");
+    
     console.log('🆔 Quick Search - Using conversation ID:', conversationId, 'isNew:', isNewConversation);
+    console.log('🔍 Quick Search - Search type:', finalSearchType);
     console.log('📤 Quick Search - Starting quick search endpoint first...');
 
     // Use real user input and settings
     const requestData: QuickSearchRequest = {
       workspace_id: workspaceId,
       conversation_id: conversationId,
-      search_type: isNewConversation ? "new_topic" : "new_topic", // Always new_topic for now
+      search_type: finalSearchType,
       web_search: webSearch,
       user_query: query,
       new_conversation: isNewConversation,
@@ -166,31 +171,6 @@ export const submitQuickSearchQuery = async (
       }
       throw new Error(`HTTP error! status: ${response.status}`);
     }
-
-    // Immediately start the interactive endpoint call (no delay)
-    console.log('🔧 Starting interactive endpoint call simultaneously...');
-    const tabId = window.location.pathname + window.location.search;
-    
-    const interactivePromise = callInteractiveEndpoint(conversationId, query, additionalComments)
-      .then(interactiveData => {
-        console.log('✅ Interactive endpoint returned data for Quick Search:', interactiveData);
-        
-        // Store interactive data for the sidebar
-        localStorage.setItem(`deeplearn_interactive_${tabId}`, JSON.stringify(interactiveData));
-        console.log('💾 Stored interactive data to localStorage with key:', `deeplearn_interactive_${tabId}`);
-        
-        // Trigger event to update sidebar
-        window.dispatchEvent(new CustomEvent('deeplearn-interactive-update', {
-          detail: { tabId, data: interactiveData }
-        }));
-        console.log('📡 Triggered deeplearn-interactive-update event for tabId:', tabId);
-        
-        return interactiveData;
-      })
-      .catch(error => {
-        console.error('❌ Interactive endpoint error for Quick Search:', error);
-        // Don't throw error to avoid breaking the main quick search flow
-      });
 
     // Start processing the quick search response stream
     const reader = response.body?.getReader();
@@ -240,10 +220,36 @@ export const submitQuickSearchQuery = async (
       }
     }
 
-    // Wait for interactive endpoint to complete (but don't block the main flow)
-    interactivePromise.catch(error => {
-      console.warn('⚠️ Interactive call failed but continuing with Quick Search:', error);
-    });
+    // Call interactive endpoint 2 seconds after query is sent (not after completion)
+    setTimeout(() => {
+      console.log('⏰ Starting interactive endpoint call after 2s delay...');
+      callInteractiveEndpoint(conversationId, query, additionalComments)
+        .then(interactiveData => {
+          console.log('✅ Interactive endpoint returned data for Quick Search:', interactiveData);
+          console.log('📊 Interactive data content check:', {
+            hasVideos: interactiveData?.interactive_content?.recommended_videos?.length > 0,
+            hasWebpages: interactiveData?.interactive_content?.related_webpages?.length > 0,
+            videosCount: interactiveData?.interactive_content?.recommended_videos?.length,
+            webpagesCount: interactiveData?.interactive_content?.related_webpages?.length
+          });
+          
+          // Store interactive data for the sidebar
+          const tabId = window.location.pathname + window.location.search;
+          localStorage.setItem(`deeplearn_interactive_${tabId}`, JSON.stringify(interactiveData));
+          console.log('💾 Stored interactive data to localStorage with key:', `deeplearn_interactive_${tabId}`);
+          
+          // Trigger event to update sidebar
+          window.dispatchEvent(new CustomEvent('deeplearn-interactive-update', {
+            detail: { tabId, data: interactiveData }
+          }));
+          console.log('📡 Triggered deeplearn-interactive-update event for tabId:', tabId);
+        })
+        .catch(error => {
+          console.error('❌ Interactive endpoint error for Quick Search:', error);
+          console.error('🔍 Error details:', error);
+          // Don't throw error to avoid breaking the main quick search flow
+        });
+    }, 2000);
 
     return conversationId;
   } catch (error) {
@@ -259,6 +265,7 @@ const callInteractiveEndpoint = async (
   userAdditionalComment?: string
 ): Promise<InteractiveResponse> => {
   try {
+    console.log('🚀 Starting interactive endpoint call...');
     const workspaceId = getWorkspaceId();
     if (!workspaceId) {
       throw new Error('No workspace selected for interactive call.');
@@ -272,12 +279,16 @@ const callInteractiveEndpoint = async (
     };
 
     console.log('📞 Calling interactive endpoint for quick search:', requestData);
+    console.log('🌐 Making fetch request to:', `${API_BASE_URL}/api/v1/deep_research/interactive`);
 
     const response = await fetch(`${API_BASE_URL}/api/v1/deep_research/interactive`, {
       method: 'POST',
       headers: createAuthHeaders(),
       body: JSON.stringify(requestData),
     });
+
+    console.log('📡 Interactive endpoint response status:', response.status);
+    console.log('📡 Interactive endpoint response ok:', response.ok);
 
     if (!response.ok) {
       if (response.status === 401) {
@@ -288,9 +299,16 @@ const callInteractiveEndpoint = async (
 
     const data: InteractiveResponse = await response.json();
     console.log('✅ Interactive endpoint returned data for Quick Search:', data);
+    console.log('📊 Response data structure:', {
+      success: data.success,
+      hasInteractiveContent: !!data.interactive_content,
+      videosCount: data.interactive_content?.recommended_videos?.length,
+      webpagesCount: data.interactive_content?.related_webpages?.length
+    });
     return data;
   } catch (error) {
     console.error('❌ Interactive API error for quick search:', error);
+    console.error('🔍 Full error object:', error);
     throw error;
   }
 };
