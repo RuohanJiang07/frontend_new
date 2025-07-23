@@ -6,6 +6,7 @@ export interface FollowUpRequest {
   user_query: string;
   user_additional_comment?: string | null;
   references_selected?: string[] | null;
+  profile_selected?: string | null; // Add this field
   new_conversation: false; // Always false for follow-up mode
 }
 
@@ -79,7 +80,8 @@ export const submitFollowUpQuery = async (
       user_query: query,
       new_conversation: false, // Always false for follow-up mode
       user_additional_comment: additionalComments || null,
-      references_selected: references || []
+      references_selected: references || null,
+      profile_selected: null // Add this field
     };
 
     console.log('📝 Submitting Follow-up request:', requestData);

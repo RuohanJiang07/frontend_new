@@ -105,6 +105,14 @@ const DeepLearnResponse: React.FC<DeepLearnResponseProps> = ({ isSplit = false, 
 
   // Load conversation data from localStorage on component mount
   useEffect(() => {
+    // Add a flag to prevent multiple API calls
+    const hasInitialized = sessionStorage.getItem(`deeplearn_initialized_${pageIdx}-${screenId}-${tabIdx}`);
+    if (hasInitialized) {
+      return;
+    }
+    
+    // Mark as initialized
+    sessionStorage.setItem(`deeplearn_initialized_${pageIdx}-${screenId}-${tabIdx}`, 'true');
     const conversationId = localStorage.getItem('current_deeplearn_conversation_id');
     const query = localStorage.getItem('current_deeplearn_query');
     const mode = localStorage.getItem('current_deeplearn_mode');
@@ -269,7 +277,7 @@ const DeepLearnResponse: React.FC<DeepLearnResponseProps> = ({ isSplit = false, 
         localStorage.removeItem(`deeplearn_interactive_${tabId}`);
       });
     }
-  }, [registerCleanup]);
+  }, [pageIdx, screenId, tabIdx, registerCleanup]);
 
   // Set a timeout to stop interactive loading after 60 seconds (fallback)
   useEffect(() => {
