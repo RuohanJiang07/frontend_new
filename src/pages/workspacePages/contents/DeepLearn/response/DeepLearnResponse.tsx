@@ -1,8 +1,7 @@
 import React, { useState, useEffect } from 'react';
-import { useTabContext, useTabCleanup } from '../../../workspaceFrame/TabContext';
+import { useTabContext } from '../../../workspaceFrame/TabContext';
 import { submitQuickSearchQuery } from '../../../../../api/workspaces/deep_learn/deepLearn_quicksearch';
 import { submitDeepLearnDeepQuery, DeepLearnStreamingData } from '../../../../../api/workspaces/deep_learn/deepLearn_deeplearn';
-import { submitFollowUpQuery } from '../../../../../api/workspaces/deep_learn/deepLearn_followup';
 import { MarkdownRenderer } from '../../../../../components/ui/markdown';
 import './DeepLearnResponse.css';
 
@@ -62,7 +61,6 @@ interface InteractiveData {
 
 const DeepLearnResponse: React.FC<DeepLearnResponseProps> = ({ isSplit = false, onBack, tabIdx = 0, pageIdx = 0, screenId = '' }) => {
   const { switchToDeepLearn, getActiveScreens, activePage } = useTabContext();
-  const { registerCleanup } = useTabCleanup(pageIdx, screenId, tabIdx);
   
   // Detect if we're in split screen mode
   const activeScreens = getActiveScreens(activePage);
@@ -105,14 +103,6 @@ const DeepLearnResponse: React.FC<DeepLearnResponseProps> = ({ isSplit = false, 
 
   // Load conversation data from localStorage on component mount
   useEffect(() => {
-    // Add a flag to prevent multiple API calls
-    const hasInitialized = sessionStorage.getItem(`deeplearn_initialized_${pageIdx}-${screenId}-${tabIdx}`);
-    if (hasInitialized) {
-      return;
-    }
-    
-    // Mark as initialized
-    sessionStorage.setItem(`deeplearn_initialized_${pageIdx}-${screenId}-${tabIdx}`, 'true');
     const conversationId = localStorage.getItem('current_deeplearn_conversation_id');
     const query = localStorage.getItem('current_deeplearn_query');
     const mode = localStorage.getItem('current_deeplearn_mode');
@@ -266,18 +256,17 @@ const DeepLearnResponse: React.FC<DeepLearnResponseProps> = ({ isSplit = false, 
         );
       }
       
-      // Register cleanup function for localStorage clearing when tab is closed
+      // Clear the localStorage to prevent duplicate loading
+      localStorage.removeItem('current_deeplearn_conversation_id');
+      localStorage.removeItem('current_deeplearn_query');
+      localStorage.removeItem('current_deeplearn_mode');
+      localStorage.removeItem('current_deeplearn_web_search');
+      
+      // Clear any existing interactive data for this tab
       const tabId = `${pageIdx}-${screenId}-${tabIdx}`;
-      registerCleanup(() => {
-        console.log('🧹 Cleaning up localStorage for tab (tab closed):', tabId);
-        localStorage.removeItem('current_deeplearn_conversation_id');
-        localStorage.removeItem('current_deeplearn_query');
-        localStorage.removeItem('current_deeplearn_mode');
-        localStorage.removeItem('current_deeplearn_web_search');
-        localStorage.removeItem(`deeplearn_interactive_${tabId}`);
-      });
+      localStorage.removeItem(`deeplearn_interactive_${tabId}`);
     }
-  }, [pageIdx, screenId, tabIdx, registerCleanup]);
+  }, []);
 
   // Set a timeout to stop interactive loading after 60 seconds (fallback)
   useEffect(() => {
@@ -329,12 +318,11 @@ const DeepLearnResponse: React.FC<DeepLearnResponseProps> = ({ isSplit = false, 
     window.addEventListener('deeplearn-interactive-update', handleInteractiveUpdate as EventListener);
     console.log('✅ Interactive event listener registered for tab:', `${pageIdx}-${screenId}-${tabIdx}`);
 
-    // Register cleanup function that only runs when tab is closed
-    registerCleanup(() => {
-      console.log('🧹 Cleaning up interactive event listener for tab (tab closed):', `${pageIdx}-${screenId}-${tabIdx}`);
+    return () => {
+      console.log('🧹 Cleaning up interactive event listener for tab:', `${pageIdx}-${screenId}-${tabIdx}`);
       window.removeEventListener('deeplearn-interactive-update', handleInteractiveUpdate as EventListener);
-    });
-  }, [pageIdx, screenId, tabIdx, registerCleanup]);
+    };
+  }, [pageIdx, screenId, tabIdx]);
 
   const handleBackClick = () => {
     // Navigate back to deep learn entry page
@@ -383,8 +371,8 @@ const DeepLearnResponse: React.FC<DeepLearnResponseProps> = ({ isSplit = false, 
     console.log('🌐 Web search enabled:', webSearchEnabled);
     console.log('🎯 Response mode:', selectedResponseMode);
 
-    // For follow-up mode, always use quick-search style regardless of mode selection
-    const displayMode = selectedMode === 'follow-up' ? 'quick-search' : selectedResponseMode;
+    // Determine the mode for the new query
+    const queryMode = selectedResponseMode;
 
     // Add the new question to conversation
     const newQuestion: ConversationMessage = {
@@ -392,7 +380,7 @@ const DeepLearnResponse: React.FC<DeepLearnResponseProps> = ({ isSplit = false, 
       type: 'question',
       content: query,
       timestamp: new Date().toLocaleString(),
-      mode: displayMode
+      mode: queryMode
     };
 
     // Add streaming answer message
@@ -401,16 +389,13 @@ const DeepLearnResponse: React.FC<DeepLearnResponseProps> = ({ isSplit = false, 
       type: 'answer',
       content: '',
       timestamp: new Date().toLocaleString(),
-      mode: displayMode,
+      mode: queryMode,
       isStreaming: true
     };
 
     setConversation(prev => [...prev, newQuestion, streamingAnswer]);
     setIsLoading(true);
-    // Only start interactive loading for new topic mode, not for follow-up mode
-    if (selectedMode === 'new-topic') {
-      setIsInteractiveLoading(true);
-    }
+    setIsInteractiveLoading(true); // Start interactive loading for new query
     setDeepLearnProgress(null); // Clear previous progress
     setInputValue(''); // Clear input
 
@@ -418,49 +403,7 @@ const DeepLearnResponse: React.FC<DeepLearnResponseProps> = ({ isSplit = false, 
     const conversationIdToUse = currentConversationId || 'dl-c-' + Date.now();
 
     try {
-      if (selectedMode === 'follow-up') {
-        // Use follow-up API for follow-up mode, ignoring the deep-learn/quick-search selection
-        await submitFollowUpQuery(
-          query,
-          webSearchEnabled,
-          (data: string) => {
-            // Update the streaming content
-            setConversation(prev => prev.map(msg => 
-              msg.id === streamingAnswer.id 
-                ? { ...msg, content: msg.content + data }
-                : msg
-            ));
-          },
-          (error: string) => {
-            console.error('Follow-up API error:', error);
-            setIsLoading(false);
-            // Update the message to show error
-            setConversation(prev => prev.map(msg => 
-              msg.id === streamingAnswer.id 
-                ? { ...msg, content: `Error: ${error}`, isStreaming: false }
-                : msg
-            ));
-          },
-          () => {
-            console.log('Follow-up API completed');
-            setIsLoading(false);
-            // Mark streaming as complete
-            setConversation(prev => prev.map(msg => 
-              msg.id === streamingAnswer.id 
-                ? { ...msg, isStreaming: false }
-                : msg
-            ));
-          },
-          conversationIdToUse, // conversationId - required for follow-up
-          'followup', // searchType - always 'followup' for follow-up mode
-          undefined, // additionalComments
-          undefined, // references
-          pageIdx,
-          screenId,
-          tabIdx
-        );
-      } else if (selectedResponseMode === 'quick-search') {
-        // Use regular quick search for new topic
+      if (queryMode === 'quick-search') {
         await submitQuickSearchQuery(
           query,
           webSearchEnabled,
@@ -473,7 +416,7 @@ const DeepLearnResponse: React.FC<DeepLearnResponseProps> = ({ isSplit = false, 
             ));
           },
           (error: string) => {
-            console.error('Quick search error:', error);
+            console.error('Follow-up quick search error:', error);
             setIsLoading(false);
             // Update the message to show error
             setConversation(prev => prev.map(msg => 
@@ -483,7 +426,7 @@ const DeepLearnResponse: React.FC<DeepLearnResponseProps> = ({ isSplit = false, 
             ));
           },
           () => {
-            console.log('Quick search completed');
+            console.log('Follow-up quick search completed');
             setIsLoading(false);
             // Mark streaming as complete
             setConversation(prev => prev.map(msg => 
@@ -496,18 +439,17 @@ const DeepLearnResponse: React.FC<DeepLearnResponseProps> = ({ isSplit = false, 
           undefined, // references
           conversationIdToUse, // existingConversationId - pass current conversation ID
           undefined, // generatedConversationId - not needed for follow-up
-          'new_topic', // searchType - always 'new_topic' for new topic mode
+          selectedMode === 'follow-up' ? 'followup' : 'new_topic', // searchType based on user selection
           pageIdx,
           screenId,
           tabIdx
         );
-      } else if (selectedResponseMode === 'deep-learn') {
-        // Use deep learn API for new topic mode
+      } else if (queryMode === 'deep-learn') {
         await submitDeepLearnDeepQuery(
           query,
           webSearchEnabled,
           (data: DeepLearnStreamingData) => {
-            console.log('📥 Received deep learn streaming data:', data);
+            console.log('📥 Received follow-up deep learn streaming data:', data);
             
             // Update progress if available
             if (data.progress) {
@@ -529,7 +471,7 @@ const DeepLearnResponse: React.FC<DeepLearnResponseProps> = ({ isSplit = false, 
             }
           },
           (error: string) => {
-            console.error('Deep learn error:', error);
+            console.error('Follow-up deep learn error:', error);
             setIsLoading(false);
             // Update the message to show error
             setConversation(prev => prev.map(msg => 
@@ -539,7 +481,7 @@ const DeepLearnResponse: React.FC<DeepLearnResponseProps> = ({ isSplit = false, 
             ));
           },
           () => {
-            console.log('Deep learn completed');
+            console.log('Follow-up deep learn completed');
             setIsLoading(false);
             // Mark streaming as complete
             setConversation(prev => prev.map(msg => 
@@ -552,7 +494,7 @@ const DeepLearnResponse: React.FC<DeepLearnResponseProps> = ({ isSplit = false, 
           undefined, // references
           conversationIdToUse, // existingConversationId - pass current conversation ID
           undefined, // generatedConversationId - not needed for follow-up
-          'new_topic', // searchType - always 'new_topic' for new topic mode
+          selectedMode === 'follow-up' ? 'followup' : 'new_topic', // searchType based on user selection
           pageIdx,
           screenId,
           tabIdx

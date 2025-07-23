@@ -19,14 +19,13 @@ export interface DeepLearnResponse {
 
 export interface QuickSearchRequest {
   workspace_id: string;
-  conversation_id: string; // Make this required
+  conversation_id?: string;
   new_conversation: boolean;
   search_type: string;
   web_search: boolean;
   user_query: string;
   user_additional_comment?: string | null;
   references_selected?: string[] | null;
-  profile_selected?: string | null; // Add this field
 }
 
 export interface InteractiveRequest {
@@ -156,8 +155,7 @@ export const submitQuickSearchQuery = async (
       user_query: query,
       new_conversation: isNewConversation,
       user_additional_comment: additionalComments || null,
-      references_selected: references || null,
-      profile_selected: null // Add this field
+      references_selected: references || []
     };
 
     console.log('📝 Submitting Quick Search request:', requestData);

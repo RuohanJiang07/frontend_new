@@ -1,15 +1,15 @@
-import { createContext, useContext, useState, ReactNode, useRef, useCallback } from 'react';
+import { createContext, useContext, useState, ReactNode } from 'react';
 
-import AiPoweredTools from '../contents/default/AiPoweredTools';
-import DeepLearnEntry from '../contents/DeepLearn/entry/DeepLearn';
-import DeepLearnResponse from '../contents/DeepLearn/response/DeepLearnResponse';
-import DocumentChatEntry from '../contents/DocumentChat/entry/DocumentChat';
-import DocumentChatResponse from '../contents/DocumentChat/response/DocumentChatResponse';
-import ProblemHelpEntry from '../contents/ProblemHelp/entry/ProblemHelp';
-import ProblemHelpResponse from '../contents/ProblemHelp/response/ProblemHelpResponse';
-import NoteEntry from '../contents/Note/entry/Note';
-import NoteResponse from '../contents/Note/response/NoteResponse';
-import Drive from '../contents/Drive/Drive';
+import AiPoweredTools from '@/pages/workspacePages/contents/default/AiPoweredTools';
+import DeepLearnEntry from '@/pages/workspacePages/contents/DeepLearn/entry/DeepLearn';
+import DeepLearnResponse from '@/pages/workspacePages/contents/DeepLearn/response/DeepLearnResponse';
+import DocumentChatEntry from '@/pages/workspacePages/contents/DocumentChat/entry/DocumentChat';
+import DocumentChatResponse from '@/pages/workspacePages/contents/DocumentChat/response/DocumentChatResponse';
+import ProblemHelpEntry from '@/pages/workspacePages/contents/ProblemHelp/entry/ProblemHelp';
+import ProblemHelpResponse from '@/pages/workspacePages/contents/ProblemHelp/response/ProblemHelpResponse';
+import NoteEntry from '@/pages/workspacePages/contents/Note/entry/Note';
+import NoteResponse from '@/pages/workspacePages/contents/Note/response/NoteResponse';
+import Drive from '@/pages/workspacePages/contents/Drive/Drive';
 
 // New screen object interface
 export interface ScreenObject {
@@ -18,21 +18,16 @@ export interface ScreenObject {
     state: 'full-screen' | 'split-left' | 'split-right';
 }
 
-// Tab context item interface
 export interface TabContextItem {
     tab: string;
     components: React.ReactNode;
-    tabList: TabContextItem[];
+    tabList: any[];
 }
 
-// Page item interface
 export interface PageItem {
     title: string;
-    screenQueue: ScreenObject[];
+    screenQueue: ScreenObject[]; // Queue of screen objects
 }
-
-// Tab cleanup function type
-export type TabCleanupFunction = () => void;
 
 interface TabContextType {
     pages: PageItem[];
@@ -81,10 +76,6 @@ interface TabContextType {
     // Helper methods for UI state
     canClosePage: (pageIdx: number) => boolean;
     canCloseTab: (pageIdx: number, screenId: string, tabIdx: number) => boolean;
-    
-    // Tab cleanup management
-    registerTabCleanup: (pageIdx: number, screenId: string, tabIdx: number, cleanup: TabCleanupFunction) => void;
-    unregisterTabCleanup: (pageIdx: number, screenId: string, tabIdx: number) => void;
 }
 
 const TabContext = createContext<TabContextType>({
@@ -116,29 +107,12 @@ const TabContext = createContext<TabContextType>({
     switchToDrive: () => { },
     canClosePage: () => false,
     canCloseTab: () => false,
-    registerTabCleanup: () => { },
-    unregisterTabCleanup: () => { },
 } as TabContextType);
 
 export const useTabContext = () => {
     const ctx = useContext(TabContext);
     if (!ctx) throw new Error('useTabContext must be used within TabProvider');
     return ctx;
-};
-
-// Custom hook for tab cleanup registration
-export const useTabCleanup = (pageIdx: number, screenId: string, tabIdx: number) => {
-    const { registerTabCleanup, unregisterTabCleanup } = useTabContext();
-    
-    const registerCleanup = useCallback((cleanup: TabCleanupFunction) => {
-        registerTabCleanup(pageIdx, screenId, tabIdx, cleanup);
-    }, [pageIdx, screenId, tabIdx, registerTabCleanup]);
-    
-    const unregisterCleanup = useCallback(() => {
-        unregisterTabCleanup(pageIdx, screenId, tabIdx);
-    }, [pageIdx, screenId, tabIdx, unregisterTabCleanup]);
-    
-    return { registerCleanup, unregisterCleanup };
 };
 
 export const TabProvider = ({ children }: { children: ReactNode }) => {
@@ -258,20 +232,6 @@ export const TabProvider = ({ children }: { children: ReactNode }) => {
 
     // Remove tab from a specific screen
     const removeTab = (pageIdx: number, screenId: string, tabIdx: number) => {
-        // Run cleanup functions for this tab before removing it
-        if (cleanupFunctions.current[pageIdx] && cleanupFunctions.current[pageIdx][screenId] && cleanupFunctions.current[pageIdx][screenId][tabIdx]) {
-            const cleanups = cleanupFunctions.current[pageIdx][screenId][tabIdx];
-            cleanups.forEach(cleanup => {
-                try {
-                    cleanup();
-                } catch (error) {
-                    console.error('Error running tab cleanup function:', error);
-                }
-            });
-            // Clear the cleanup functions for this tab
-            cleanupFunctions.current[pageIdx][screenId][tabIdx] = [];
-        }
-        
         setPages(prev => prev.map((page, idx) => {
             if (idx !== pageIdx) return page;
             
@@ -689,28 +649,6 @@ export const TabProvider = ({ children }: { children: ReactNode }) => {
         }));
     };
 
-    // Tab cleanup management
-    const cleanupFunctions = useRef<Record<number, Record<string, Record<number, TabCleanupFunction[]>>>>({});
-
-    const registerTabCleanup = useCallback((pageIdx: number, screenId: string, tabIdx: number, cleanup: TabCleanupFunction) => {
-        if (!cleanupFunctions.current[pageIdx]) {
-            cleanupFunctions.current[pageIdx] = {};
-        }
-        if (!cleanupFunctions.current[pageIdx][screenId]) {
-            cleanupFunctions.current[pageIdx][screenId] = {};
-        }
-        if (!cleanupFunctions.current[pageIdx][screenId][tabIdx]) {
-            cleanupFunctions.current[pageIdx][screenId][tabIdx] = [];
-        }
-        cleanupFunctions.current[pageIdx][screenId][tabIdx].push(cleanup);
-    }, []);
-
-    const unregisterTabCleanup = useCallback((pageIdx: number, screenId: string, tabIdx: number) => {
-        if (cleanupFunctions.current[pageIdx] && cleanupFunctions.current[pageIdx][screenId] && cleanupFunctions.current[pageIdx][screenId][tabIdx]) {
-            cleanupFunctions.current[pageIdx][screenId][tabIdx] = [];
-        }
-    }, []);
-
     return (
         <TabContext.Provider
             value={{
@@ -742,8 +680,6 @@ export const TabProvider = ({ children }: { children: ReactNode }) => {
                 switchToDrive,
                 canClosePage,
                 canCloseTab,
-                registerTabCleanup,
-                unregisterTabCleanup,
             }}
         >
             {children}
