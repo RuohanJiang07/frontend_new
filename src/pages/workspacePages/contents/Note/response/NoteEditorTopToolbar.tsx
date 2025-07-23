@@ -19,7 +19,8 @@ import {
   ZoomIn, 
   ZoomOut,
   ChevronUp,
-  ChevronDown
+  ChevronDown,
+  Save
 } from 'lucide-react';
 
 interface NoteEditorTopToolbarProps {
@@ -28,9 +29,17 @@ interface NoteEditorTopToolbarProps {
   onZoomIn?: () => void;
   onZoomOut?: () => void;
   isInSplitMode?: boolean;
+  noteData?: {
+    noteId: string;
+    noteName: string;
+    workspaceId: string;
+    timestamp: string;
+  } | null;
+  onSave?: () => void;
+  isSaving?: boolean;
 }
 
-function NoteEditorTopToolbar({ onBack, editor, onZoomIn, onZoomOut, isInSplitMode = false }: NoteEditorTopToolbarProps) {
+function NoteEditorTopToolbar({ onBack, editor, onZoomIn, onZoomOut, isInSplitMode = false, noteData, onSave, isSaving = false }: NoteEditorTopToolbarProps) {
   const [isCollapsed, setIsCollapsed] = useState(false);
 
   // Function to handle bold formatting
@@ -115,7 +124,7 @@ function NoteEditorTopToolbar({ onBack, editor, onZoomIn, onZoomOut, isInSplitMo
           
           {/* Title - moved closer to the last saved info */}
           <h1 className="note-title">
-            PHYS 2801 Class
+            {noteData?.noteName || 'Untitled Note'}
           </h1>
         </div>
         
@@ -124,7 +133,7 @@ function NoteEditorTopToolbar({ onBack, editor, onZoomIn, onZoomOut, isInSplitMo
           <svg className="cloud-icon" viewBox="0 0 24 24" fill="none" xmlns="http://www.w3.org/2000/svg">
             <path d="M18 10H16.74C16.3659 7.49025 14.2358 5.5 11.64 5.5C9.17383 5.5 7.14625 7.33122 6.64118 9.71839C4.06833 10.2202 2 12.2923 2 14.8C2 17.567 4.433 20 7.2 20H18C20.7614 20 23 17.7614 23 15C23 12.2386 20.7614 10 18 10Z" fill="currentColor"/>
           </svg>
-          <span>Last saved at 4:47 pm</span>
+          <span>Last saved at {noteData?.timestamp ? new Date(noteData.timestamp).toLocaleTimeString('en-US', { hour: 'numeric', minute: '2-digit', hour12: true }) : new Date().toLocaleTimeString('en-US', { hour: 'numeric', minute: '2-digit', hour12: true })}</span>
         </div>
         
         {/* Author info */}
@@ -137,7 +146,7 @@ function NoteEditorTopToolbar({ onBack, editor, onZoomIn, onZoomOut, isInSplitMo
           </div>
           
           <div className="created-date-box">
-            <span>Created at Jun 11</span>
+            <span>Created at {noteData?.timestamp ? new Date(noteData.timestamp).toLocaleDateString('en-US', { month: 'short', day: 'numeric' }) : new Date().toLocaleDateString('en-US', { month: 'short', day: 'numeric' })}</span>
           </div>
         </div>
       </div>
@@ -235,6 +244,16 @@ function NoteEditorTopToolbar({ onBack, editor, onZoomIn, onZoomOut, isInSplitMo
           
           {/* Zoom buttons and collapse button - right aligned */}
           <div className="ml-auto flex items-center gap-2">
+            {/* Save button */}
+            <button 
+              className={`p-1 text-gray-600 hover:bg-gray-100 rounded-full ${isSaving ? 'opacity-50 cursor-not-allowed' : ''}`}
+              onClick={onSave}
+              disabled={isSaving}
+              title="Save Note"
+            >
+              <Save size={20} />
+            </button>
+            
             <button 
               className="p-1 text-gray-600 hover:bg-gray-100 rounded-full"
               onClick={onZoomIn}

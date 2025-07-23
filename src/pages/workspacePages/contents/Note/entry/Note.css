@@ -379,6 +379,118 @@
   line-height: normal;
 }
 
+/* Loading Skeleton Styles */
+.note-loading-skeleton {
+  display: flex;
+  width: 100%;
+  min-width: 200px;
+  max-width: 280px;
+  height: 166px;
+  padding: 21px 17px;
+  gap: 17px;
+  flex-shrink: 0;
+  border-radius: 10px;
+  border: 1px solid #E0E0E0;
+  background: #FFF;
+  box-shadow: 0px 2px 40px 0px rgba(0, 0, 0, 0.06);
+  position: relative;
+  flex-direction: column;
+  overflow: hidden;
+}
+
+.note-files-grid.split .note-loading-skeleton {
+  min-width: 180px;
+}
+
+.note-loading-skeleton::before {
+  content: '';
+  position: absolute;
+  top: 0;
+  left: -100%;
+  width: 100%;
+  height: 100%;
+  background: linear-gradient(
+    90deg,
+    transparent,
+    rgba(255, 255, 255, 0.6),
+    transparent
+  );
+  animation: shimmer 1.5s infinite;
+}
+
+@keyframes shimmer {
+  0% {
+    left: -100%;
+  }
+  100% {
+    left: 100%;
+  }
+}
+
+.note-loading-icon {
+  width: 60px;
+  height: 60px;
+  background-color: #f0f0f0;
+  border-radius: 8px;
+  flex-shrink: 0;
+}
+
+.note-loading-info {
+  height: 46px;
+  display: flex;
+  flex-direction: row;
+  justify-content: space-between;
+  align-items: center;
+  width: 100%;
+}
+
+.note-loading-title {
+  width: 70%;
+  height: 20px;
+  background-color: #f0f0f0;
+  border-radius: 4px;
+  margin: 0;
+}
+
+.note-loading-right {
+  display: flex;
+  flex-direction: column;
+  align-items: center;
+  gap: 5px;
+  flex-shrink: 0;
+}
+
+.note-loading-tag {
+  width: 50px;
+  height: 16px;
+  background-color: #f0f0f0;
+  border-radius: 4px;
+}
+
+.note-loading-size {
+  width: 40px;
+  height: 14px;
+  background-color: #f0f0f0;
+  border-radius: 4px;
+}
+
+/* Error and Empty Message Styles */
+.error-message,
+.empty-message {
+  grid-column: 1 / -1;
+  display: flex;
+  justify-content: center;
+  align-items: center;
+  height: 200px;
+  font-family: 'Inter', sans-serif;
+  font-size: 16px;
+  color: #666;
+  text-align: center;
+  background-color: #f8f8f8;
+  border-radius: 10px;
+  border: 1px solid #E0E0E0;
+}
+
 /* Responsive Design - Only for very small screens */
 @media (max-width: 480px) {
   .note-content {
@@ -390,6 +502,10 @@
   }
   
   .note-file-card {
+    min-width: 160px;
+  }
+  
+  .note-loading-skeleton {
     min-width: 160px;
   }
 }

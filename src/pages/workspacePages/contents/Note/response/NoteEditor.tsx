@@ -8,6 +8,8 @@ import { TextStyle } from '@tiptap/extension-text-style';
 import Color from '@tiptap/extension-color';
 import FontFamily from '@tiptap/extension-font-family';
 import { useTabContext } from '../../../workspaceFrame/TabContext';
+import { getNoteContent, saveNoteContent } from '../../../../../api/workspaces/note/note';
+import { useToast } from '../../../../../hooks/useToast';
 import NoteCopilotButton from './NoteCopilotButton';
 import NoteEditorTopToolbar from './NoteEditorTopToolbar';
 import './style/NoteEditor.css';
@@ -21,9 +23,87 @@ interface NoteEditorProps {
 
 function NoteEditor({ onBack, tabIdx = 0, pageIdx = 0, screenId = '' }: NoteEditorProps) {
   const { switchToNote, getActiveScreens, activePage } = useTabContext();
+  const { error, success } = useToast();
   const [zoomLevel, setZoomLevel] = useState(1);
   const [lineCount, setLineCount] = useState(1);
   const [lineHeights, setLineHeights] = useState<number[]>([]);
+  const [noteData, setNoteData] = useState<{
+    noteId: string;
+    noteName: string;
+    workspaceId: string;
+    timestamp: string;
+  } | null>(null);
+  const [noteContent, setNoteContent] = useState<string>('');
+  const [isLoadingContent, setIsLoadingContent] = useState(false);
+  const [isSaving, setIsSaving] = useState(false);
+
+  // Function to fetch note content
+  const fetchNoteContent = async (noteId: string, workspaceId: string) => {
+    setIsLoadingContent(true);
+    try {
+      const response = await getNoteContent({
+        workspace_id: workspaceId,
+        file_id: noteId
+      });
+      
+      if (response.success) {
+        setNoteContent(response.content);
+      } else {
+        error('Failed to load note content');
+      }
+    } catch (err) {
+      console.error('Error fetching note content:', err);
+      error('Failed to load note content');
+    } finally {
+      setIsLoadingContent(false);
+    }
+  };
+
+  // Function to save note content
+  const handleSave = async () => {
+    if (!noteData || !editor) return;
+    
+    setIsSaving(true);
+    try {
+      const content = editor.getHTML();
+      const response = await saveNoteContent({
+        workspace_id: noteData.workspaceId,
+        file_id: noteData.noteId,
+        content: content
+      });
+      
+      if (response.success) {
+        success('Note saved successfully!');
+      } else {
+        error('Failed to save note');
+      }
+    } catch (err) {
+      console.error('Error saving note:', err);
+      error('Failed to save note');
+    } finally {
+      setIsSaving(false);
+    }
+  };
+
+  // Get note data from localStorage when component mounts
+  useEffect(() => {
+    const storedNoteData = localStorage.getItem('current_note_data');
+    if (storedNoteData) {
+      try {
+        const parsedData = JSON.parse(storedNoteData);
+        setNoteData(parsedData);
+        // Clear the data from localStorage after reading it
+        localStorage.removeItem('current_note_data');
+        
+        // Fetch note content if we have note data
+        if (parsedData.noteId && parsedData.workspaceId) {
+          fetchNoteContent(parsedData.noteId, parsedData.workspaceId);
+        }
+      } catch (error) {
+        console.error('Error parsing note data:', error);
+      }
+    }
+  }, []);
   
   // 检测分屏模式 - 直接使用，不需要延迟
   const activeScreens = getActiveScreens(activePage);
@@ -88,14 +168,7 @@ function NoteEditor({ onBack, tabIdx = 0, pageIdx = 0, screenId = '' }: NoteEdit
       Color,
       FontFamily,
     ],
-    content: `<h1>What is Lorem Ipsum?</h1>
-<p>Lorem Ipsum is simply dummy text of the printing and typesetting industry. Lorem Ipsum has been the industry's standard dummy text ever since the 1500s, when an unknown printer took a galley of type and scrambled it to make a type specimen book. It has survived not only five centuries, but also the leap into electronic typesetting, remaining essentially unchanged. It was popularised in the 1960s with the release of Letraset sheets containing Lorem Ipsum passages, and more recently with desktop publishing software like Aldus PageMaker including versions of Lorem Ipsum.</p>
-<h2>Why do we use it?</h2>
-<p>It is a long established fact that a reader will be distracted by the readable content of a page when looking at its layout. The point of using Lorem Ipsum is that it has a more-or-less normal distribution of letters, as opposed to using 'Content here, content here', making it look like readable English. Many desktop publishing packages and web page editors now use Lorem Ipsum as their default model text, and a search for 'lorem ipsum' will uncover many web sites still in their infancy. Various versions have evolved over the years, sometimes by accident, sometimes on purpose (injected humour and the like).</p>
-<p></p>
-<p></p>
-<h2>Where does it come from?</h2>
-<p>Contrary to popular belief, Lorem Ipsum is not simply random text. It has roots in a piece of classical Latin literature from 45 BC, making it over 2000 years old.</p>`,
+    content: noteContent || '<p></p>',
     editorProps: {
       attributes: {
         class: 'prose prose-sm focus:outline-none font-inter text-sm leading-relaxed',
@@ -109,6 +182,13 @@ function NoteEditor({ onBack, tabIdx = 0, pageIdx = 0, screenId = '' }: NoteEdit
       updateLineCount(editor);
     },
   });
+
+  // Update editor content when noteContent changes
+  useEffect(() => {
+    if (editor && noteContent) {
+      editor.commands.setContent(noteContent);
+    }
+  }, [editor, noteContent]);
 
   useEffect(() => {
     const handleNoteCopilotText = (event: CustomEvent<{ text: string }>) => {
@@ -170,6 +250,9 @@ function NoteEditor({ onBack, tabIdx = 0, pageIdx = 0, screenId = '' }: NoteEdit
         onZoomIn={handleZoomIn}
         onZoomOut={handleZoomOut}
         isInSplitMode={isInSplitMode}
+        noteData={noteData}
+        onSave={handleSave}
+        isSaving={isSaving}
       />
       
       <div className="flex-1 relative overflow-hidden">
@@ -185,8 +268,16 @@ function NoteEditor({ onBack, tabIdx = 0, pageIdx = 0, screenId = '' }: NoteEdit
                 transition: 'all 0.3s ease-in-out'
               }}
             >
-              <div className="line-numbers">{generateLineNumbers()}</div>
-              <EditorContent editor={editor} className="editor-content" />
+              {isLoadingContent ? (
+                <div className="flex justify-center items-center h-32">
+                  <div className="text-gray-500">Loading note content...</div>
+                </div>
+              ) : (
+                <>
+                  <div className="line-numbers">{generateLineNumbers()}</div>
+                  <EditorContent editor={editor} className="editor-content" />
+                </>
+              )}
             </div>
           </div>
         </div>

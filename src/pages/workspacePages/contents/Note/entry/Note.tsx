@@ -1,9 +1,12 @@
-import React, { useState } from 'react';
+import React, { useState, useEffect } from 'react';
 import { MoreVerticalIcon, UploadIcon, FolderPlusIcon, PlusIcon, ClockIcon, FileTextIcon, SearchIcon } from 'lucide-react';
 import { useTabContext } from '../../../workspaceFrame/TabContext';
+import CreateNoteModal from '../../../../../components/workspacePage/CreateNoteModal';
+import { createNote, listAllNotes, NoteItem as ApiNoteItem } from '../../../../../api/workspaces/note/note';
+import { useToast } from '../../../../../hooks/useToast';
 import './Note.css';
 
-interface NoteItem {
+interface LocalNoteItem {
   id: string;
   name: string;
   type: 'folder' | 'file';
@@ -22,76 +25,68 @@ interface NoteProps {
 
 function Note({ onBack, onViewChange, tabIdx = 0, pageIdx = 0, screenId = '' }: NoteProps) {
   const { switchToNote, switchToNoteResponse } = useTabContext();
+  const { success, error } = useToast();
   const [activeFilter, setActiveFilter] = useState('recent');
   const [searchQuery, setSearchQuery] = useState('');
+  const [isCreateModalOpen, setIsCreateModalOpen] = useState(false);
+  const [notes, setNotes] = useState<ApiNoteItem[]>([]);
+  const [isLoading, setIsLoading] = useState(true);
   
   // Get split screen context
   const { activePage, getActiveScreens } = useTabContext();
   const activeScreens = getActiveScreens(activePage);
   const isSplit = activeScreens.length > 1;
 
-  // Sample data matching the image
-  const noteItems: NoteItem[] = [
-    {
-      id: '1',
-      name: 'Calculus - SYLLABUS',
-      type: 'file',
-      fileType: 'docx',
-      size: '9.4MB'
-    },
-    {
-      id: '2',
-      name: 'Problem Set 2',
-      type: 'file',
-      fileType: 'docx',
-      size: '780KB'
-    },
-    {
-      id: '3',
-      name: 'Calculus - SYLLABUS',
-      type: 'file',
-      fileType: 'docx',
-      size: '9.4MB'
-    },
-    {
-      id: '4',
-      name: 'Problem Set 2',
-      type: 'file',
-      fileType: 'docx',
-      size: '780KB'
-    },
-    {
-      id: '5',
-      name: 'my diary',
-      type: 'file',
-      fileType: 'docx',
-      size: '780KB'
-    },
-    {
-      id: '6',
-      name: 'Answer Key',
-      type: 'file',
-      fileType: 'docx',
-      size: '9.4MB'
-    },
-    {
-      id: '7',
-      name: 'Lecture Notes',
-      type: 'file',
-      fileType: 'docx',
-      size: '2.1MB'
-    },
-    {
-      id: '8',
-      name: 'Study Guide',
-      type: 'file',
-      fileType: 'docx',
-      size: '1.5MB'
-    }
-  ];
+  // Fetch notes when component mounts
+  useEffect(() => {
+    const fetchNotes = async () => {
+      try {
+        const workspaceId = localStorage.getItem('current_workspace_id');
+        if (!workspaceId) {
+          error('No workspace selected');
+          setIsLoading(false);
+          return;
+        }
 
-  const handleItemClick = (item: NoteItem) => {
+        const response = await listAllNotes({ workspace_id: workspaceId });
+        if (response.success) {
+          setNotes(response.notes);
+        } else {
+          error('Failed to load notes');
+        }
+      } catch (err) {
+        console.error('Error fetching notes:', err);
+        error('Failed to load notes');
+      } finally {
+        setIsLoading(false);
+      }
+    };
+
+    fetchNotes();
+  }, [error]);
+
+  // Convert API notes to local format
+  const noteItems: LocalNoteItem[] = notes.map(note => ({
+    id: note.id,
+    name: note.name,
+    type: 'file' as const,
+    fileType: 'note',
+    size: '3.2MB' // Using 3.2MB as requested
+  }));
+
+  const handleItemClick = (item: LocalNoteItem) => {
     if (item.type === 'file') {
+      // Find the original note data
+      const originalNote = notes.find(note => note.id === item.id);
+      if (originalNote) {
+        // Store note data in localStorage for the editor to access
+        localStorage.setItem('current_note_data', JSON.stringify({
+          noteId: originalNote.id,
+          noteName: originalNote.name,
+          workspaceId: originalNote.parent_id === 'root' ? localStorage.getItem('current_workspace_id') || '' : originalNote.parent_id,
+          timestamp: originalNote.uploaded_at
+        }));
+      }
       // Navigate to note editor for files
       switchToNoteResponse(pageIdx, screenId, tabIdx);
     } else {
@@ -101,8 +96,49 @@ function Note({ onBack, onViewChange, tabIdx = 0, pageIdx = 0, screenId = '' }: 
   };
 
   const handleCreateNote = () => {
-    // Navigate to note editor for creating new note
-    switchToNoteResponse(pageIdx, screenId, tabIdx);
+    setIsCreateModalOpen(true);
+  };
+
+  const handleCreateNoteSubmit = async (noteName: string) => {
+    try {
+      const workspaceId = localStorage.getItem('current_workspace_id');
+      if (!workspaceId) {
+        error('No workspace selected');
+        return;
+      }
+
+      const response = await createNote({
+        workspace_id: workspaceId,
+        parent_id: 'root',
+        note_name: noteName
+      });
+
+      if (response.success) {
+        success(`Note "${noteName}" created successfully!`);
+        // Store note data in localStorage for the editor to access
+        localStorage.setItem('current_note_data', JSON.stringify({
+          noteId: response.note_id,
+          noteName: response.note_name,
+          workspaceId: response.workspace_id,
+          timestamp: response.timestamp
+        }));
+        // Refresh the notes list
+        const workspaceId = localStorage.getItem('current_workspace_id');
+        if (workspaceId) {
+          const refreshResponse = await listAllNotes({ workspace_id: workspaceId });
+          if (refreshResponse.success) {
+            setNotes(refreshResponse.notes);
+          }
+        }
+        // Navigate to note editor
+        switchToNoteResponse(pageIdx, screenId, tabIdx);
+      } else {
+        error('Failed to create note');
+      }
+    } catch (err) {
+      console.error('Error creating note:', err);
+      error('Failed to create note');
+    }
   };
 
   const handleUpload = () => {
@@ -184,7 +220,24 @@ function Note({ onBack, onViewChange, tabIdx = 0, pageIdx = 0, screenId = '' }: 
 
         {/* Note Files Grid */}
         <div className={`note-files-grid ${isSplit ? 'split' : ''}`}>
-          {filteredItems.map((item) => (
+          {isLoading ? (
+            // Loading skeleton cards
+            Array.from({ length: 8 }).map((_, index) => (
+              <div key={`loading-${index}`} className="note-loading-skeleton">
+                <div className="note-loading-icon"></div>
+                <div className="note-loading-info">
+                  <div className="note-loading-title"></div>
+                  <div className="note-loading-right">
+                    <div className="note-loading-tag"></div>
+                    <div className="note-loading-size"></div>
+                  </div>
+                </div>
+              </div>
+            ))
+          ) : filteredItems.length === 0 ? (
+            <div className="empty-message">No notes found</div>
+          ) : (
+            filteredItems.map((item) => (
             <div
               key={item.id}
               className="note-file-card"
@@ -211,9 +264,17 @@ function Note({ onBack, onViewChange, tabIdx = 0, pageIdx = 0, screenId = '' }: 
                 </div>
               </div>
             </div>
-          ))}
+          ))
+          )}
         </div>
       </div>
+      
+      {/* Create Note Modal */}
+      <CreateNoteModal
+        isOpen={isCreateModalOpen}
+        onClose={() => setIsCreateModalOpen(false)}
+        onCreateNote={handleCreateNoteSubmit}
+      />
     </div>
   );
 }
