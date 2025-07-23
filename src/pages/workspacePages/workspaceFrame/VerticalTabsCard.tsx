@@ -270,7 +270,18 @@ const VerticalTabsCard: React.FC<VerticalTabsCardProps> = ({
             {!isCollapsed && (
                 <main className="flex-1 flex flex-col items-center transition-all duration-500 min-h-0">
                     <div className="w-full bg-white rounded-2xl shadow p-4 overflow-y-auto" style={{ height: 'calc(100vh - 6rem)', marginBottom: '0.5rem' }}>
-                        {data[activeIdx]?.components && renderTabContent(data[activeIdx].components, activeIdx)}
+                        {/* Render all tab components but only show the active one to prevent unmounting */}
+                        {data.map((item, idx) => (
+                            <div
+                                key={item.tab + idx}
+                                style={{
+                                    display: activeIdx === idx ? 'block' : 'none',
+                                    height: '100%'
+                                }}
+                            >
+                                {item.components && renderTabContent(item.components, idx)}
+                            </div>
+                        ))}
                     </div>
                 </main>
             )}

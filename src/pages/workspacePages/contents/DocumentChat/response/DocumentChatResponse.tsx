@@ -1,11 +1,12 @@
-import React, { useEffect, useRef, useState } from 'react';
-import { useTabContext } from '../../../workspaceFrame/TabContext';
-import './DocumentChatResponse.css';
+import React, { useState, useEffect, useRef } from 'react';
+import { useTabContext, useTabCleanup } from '../../../workspaceFrame/TabContext';
 import { submitDocumentChatQuery } from '../../../../../api/workspaces/document_chat/DocumentChatMain';
-import { useToast } from '../../../../../hooks/useToast';
+import { getDriveFiles } from '../../../../../api/workspaces/drive/getFiles';
 import { MarkdownRenderer } from '../../../../../components/ui/markdown';
+import './DocumentChatResponse.css';
+import { useToast } from '../../../../../hooks/useToast';
 import { getDocumentChatHistoryConversation, DocumentChatHistoryItem } from '../../../../../api/workspaces/document_chat/getHistory';
-import { getDriveFiles, TransformedDriveItem } from '../../../../../api/workspaces/drive/getFiles';
+import { TransformedDriveItem } from '../../../../../api/workspaces/drive/getFiles';
 
 interface DocumentChatResponseProps {
   isSplit?: boolean;
@@ -40,6 +41,7 @@ const DocumentChatResponse: React.FC<DocumentChatResponseProps> = ({
   screenId = '' 
 }) => {
   const { switchToDocumentChat, getActiveScreens, activePage } = useTabContext();
+  const { registerCleanup } = useTabCleanup(pageIdx, screenId, tabIdx);
   const { error, success } = useToast();
   const conversationMainRef = useRef<HTMLDivElement>(null);
   const scrollbarThumbRef = useRef<HTMLDivElement>(null);
@@ -654,14 +656,16 @@ const DocumentChatResponse: React.FC<DocumentChatResponseProps> = ({
     // Initial update
     updateScrollbar();
 
-    return () => {
+    // Register cleanup function that only runs when tab is closed
+    registerCleanup(() => {
+      console.log('🧹 Cleaning up scrollbar event listeners for tab (tab closed):', `${pageIdx}-${screenId}-${tabIdx}`);
       conversationMain.removeEventListener('scroll', handleScroll);
       scrollbarTrack.removeEventListener('click', handleTrackClick);
       window.removeEventListener('wheel', handleGlobalWheel);
       window.removeEventListener('resize', updateScrollbar);
       clearTimeout(scrollTimeout);
-    };
-  }, []);
+    });
+  }, [registerCleanup]);
 
   return (
     <div className="document-chat-response">

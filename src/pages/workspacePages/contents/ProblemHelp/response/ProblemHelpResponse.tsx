@@ -1,5 +1,5 @@
-import React, { useState, useRef, useEffect } from 'react';
-import { useTabContext } from '../../../workspaceFrame/TabContext';
+import React, { useState, useEffect, useRef } from 'react';
+import { useTabContext, useTabCleanup } from '../../../workspaceFrame/TabContext';
 import './ProblemHelpResponse.css';
 import { MarkdownRenderer } from '../../../../../components/ui/markdown';
 import { submitProblemSolverSolution } from '../../../../../api/workspaces/problem_help/ProblemHelpMain';
@@ -30,6 +30,7 @@ interface ConversationMessage {
 
 const ProblemHelpResponse: React.FC<ProblemHelpResponseProps> = ({ onBack, tabIdx = 0, pageIdx = 0, screenId = '', uniqueTabId }) => {
   const { switchToProblemHelp, getActiveScreens, activePage } = useTabContext();
+  const { registerCleanup } = useTabCleanup(pageIdx, screenId, tabIdx);
   const { error, success } = useToast();
   
   // Helper function to extract concepts from content
@@ -146,8 +147,8 @@ const ProblemHelpResponse: React.FC<ProblemHelpResponseProps> = ({ onBack, tabId
             console.error('Failed to load history conversation:', response.message);
             error('Failed to load conversation history');
           }
-        } catch (error) {
-          console.error('❌ Error loading history conversation:', error);
+        } catch (err) {
+          console.error('❌ Error loading history conversation:', err);
           error('Failed to load conversation history');
           // Clear the history flags and fall through to normal loading
           localStorage.removeItem(`problemhelp_history_loaded_${tabId}`);
@@ -241,14 +242,16 @@ const ProblemHelpResponse: React.FC<ProblemHelpResponseProps> = ({ onBack, tabId
       window.addEventListener('problemhelp-streaming-update', handleStreamingUpdate as EventListener);
       window.addEventListener('problemhelp-streaming-complete', handleStreamingComplete as EventListener);
 
-      return () => {
+      // Register cleanup function that only runs when tab is closed
+      registerCleanup(() => {
+        console.log('🧹 Cleaning up problem help event listeners for tab (tab closed):', `${pageIdx}-${screenId}-${tabIdx}`);
         window.removeEventListener('problemhelp-streaming-update', handleStreamingUpdate as EventListener);
         window.removeEventListener('problemhelp-streaming-complete', handleStreamingComplete as EventListener);
-      };
+      });
     } else {
       console.log('No saved data found, using defaults');
     }
-  }, [error, pageIdx, screenId, tabIdx]);
+  }, [error, pageIdx, screenId, tabIdx, registerCleanup]);
 
   // Handle submitting follow-up question
   const handleSubmitFollowUp = async () => {
@@ -310,8 +313,8 @@ const ProblemHelpResponse: React.FC<ProblemHelpResponseProps> = ({ onBack, tabId
         generatedConversationId: isNewConversation ? conversationId : undefined
       });
       
-      // Start problem solver
-      await submitProblemSolverSolution(
+              // Start problem solver
+        await submitProblemSolverSolution(
         queryToSubmit,
         profileSelected ? 'selected' : undefined,
         null, // references
