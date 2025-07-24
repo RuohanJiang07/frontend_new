@@ -388,57 +388,25 @@
   scrollbar-color: rgba(0, 0, 0, 0.2) transparent;
 }
 
-/* Hide the default scrollbar */
+/* Standard scrollbar styling like other response pages */
 .document-chat-response-conversation-main::-webkit-scrollbar {
-  display: none;
-}
-
-.document-chat-response-conversation-main {
-  scrollbar-width: none; /* Firefox */
-  -ms-overflow-style: none; /* IE and Edge */
-}
-
-/* Custom scrollbar positioned at tab level */
-.document-chat-response-custom-scrollbar {
-  position: fixed;
-  right: 3px;
-  top: 100px; /* Align with the header section */
   width: 6px;
+}
+
+.document-chat-response-conversation-main::-webkit-scrollbar-track {
   background: transparent;
-  z-index: 1000;
-  pointer-events: auto; /* Enable interaction */
 }
 
-.document-chat-response-custom-scrollbar-track {
-  position: absolute;
-  right: 0;
-  top: 0;
-  bottom: 0;
-  width: 6px;
-  background: transparent;
-  pointer-events: auto; /* Enable interaction */
-  cursor: pointer;
-}
-
-.document-chat-response-custom-scrollbar-thumb {
-  position: absolute;
-  right: 0;
-  width: 6px;
+.document-chat-response-conversation-main::-webkit-scrollbar-thumb {
   background-color: rgba(0, 0, 0, 0.2);
   border-radius: 3px;
-  transition: opacity 0.3s ease;
-  pointer-events: auto; /* Enable interaction */
-  opacity: 0; /* Hidden by default */
 }
 
-.document-chat-response-custom-scrollbar:hover .document-chat-response-custom-scrollbar-thumb {
-  opacity: 1; /* Visible on hover */
+.document-chat-response-conversation-main::-webkit-scrollbar-thumb:hover {
+  background-color: rgba(0, 0, 0, 0.3);
 }
 
-/* Show scrollbar when scrolling */
-.document-chat-response-custom-scrollbar.scrolling .document-chat-response-custom-scrollbar-thumb {
-  opacity: 1;
-}
+/* Removed custom scrollbar - now using standard browser scrollbar */
 
 /* Conversation Section - Remove duplicate rule that conflicts with responsive design */
 

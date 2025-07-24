@@ -2,6 +2,15 @@ import React, { useState } from 'react';
 import { Expand, Maximize, PlusIcon, X } from 'lucide-react';
 import { useTabContext, TabContextItem } from './TabContext';
 import AiPoweredTools from '../contents/default/AiPoweredTools';
+import DeepLearnEntry from '../contents/DeepLearn/entry/DeepLearn';
+import DeepLearnResponse from '../contents/DeepLearn/response/DeepLearnResponse';
+import DocumentChatEntry from '../contents/DocumentChat/entry/DocumentChat';
+import DocumentChatResponse from '../contents/DocumentChat/response/DocumentChatResponse';
+import ProblemHelpEntry from '../contents/ProblemHelp/entry/ProblemHelp';
+import ProblemHelpResponse from '../contents/ProblemHelp/response/ProblemHelpResponse';
+import NoteEntry from '../contents/Note/entry/Note';
+import NoteResponse from '../contents/Note/response/NoteResponse';
+import Drive from '../contents/Drive/Drive';
 
 interface VerticalTabsCardProps {
     data: TabContextItem[];
@@ -61,7 +70,8 @@ const VerticalTabsCard: React.FC<VerticalTabsCardProps> = ({
     const handleAdd = () => {
         const newTab: TabContextItem = {
             tab: `Tab${data.length + 1}`,
-            components: <AiPoweredTools />,
+            componentType: "AiPoweredTools",
+            componentProps: {},
             tabList: [],
         };
         addTab(activePage, screenId, newTab);
@@ -74,16 +84,40 @@ const VerticalTabsCard: React.FC<VerticalTabsCardProps> = ({
         return data.length <= 1 && activeScreens.length > 1;
     };
 
-    // Helper function to inject props into tab components
-    const renderTabContent = (component: React.ReactNode, tabIdx: number) => {
-        if (React.isValidElement(component)) {
-            return React.cloneElement(component, {
-                tabIdx,
-                pageIdx,
-                screenId,
-            } as any);
+    // Component factory to render components based on type
+    const renderComponentByType = (componentType: string, componentProps: any, tabIdx: number, isVisible: boolean) => {
+        const props = {
+            ...componentProps,
+            tabIdx,
+            pageIdx,
+            screenId,
+            isVisible,
+        };
+        
+        switch (componentType) {
+            case 'AiPoweredTools':
+                return <AiPoweredTools {...props} />;
+            case 'DeepLearnEntry':
+                return <DeepLearnEntry {...props} />;
+            case 'DeepLearnResponse':
+                return <DeepLearnResponse {...props} />;
+            case 'DocumentChatEntry':
+                return <DocumentChatEntry {...props} />;
+            case 'DocumentChatResponse':
+                return <DocumentChatResponse {...props} />;
+            case 'ProblemHelpEntry':
+                return <ProblemHelpEntry {...props} />;
+            case 'ProblemHelpResponse':
+                return <ProblemHelpResponse {...props} />;
+            case 'NoteEntry':
+                return <NoteEntry {...props} />;
+            case 'NoteResponse':
+                return <NoteResponse {...props} />;
+            case 'Drive':
+                return <Drive {...props} />;
+            default:
+                return <AiPoweredTools {...props} />;
         }
-        return component;
     };
 
     // When onlyShowTabList is true, show only the vertical tab list
@@ -270,7 +304,18 @@ const VerticalTabsCard: React.FC<VerticalTabsCardProps> = ({
             {!isCollapsed && (
                 <main className="flex-1 flex flex-col items-center transition-all duration-500 min-h-0">
                     <div className="w-full bg-white rounded-2xl shadow p-4 overflow-y-auto" style={{ height: 'calc(100vh - 6rem)', marginBottom: '0.5rem' }}>
-                        {data[activeIdx]?.components && renderTabContent(data[activeIdx].components, activeIdx)}
+                        {data.map((item, tabIdx) => (
+                            <div
+                                key={`${item.componentType}-${tabIdx}`}
+                                style={{
+                                    display: activeIdx === tabIdx ? 'block' : 'none',
+                                    width: '100%',
+                                    height: '100%'
+                                }}
+                            >
+                                {renderComponentByType(item.componentType, item.componentProps, tabIdx, activeIdx === tabIdx)}
+                            </div>
+                        ))}
                     </div>
                 </main>
             )}

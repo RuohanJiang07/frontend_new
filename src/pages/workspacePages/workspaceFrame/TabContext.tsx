@@ -1,15 +1,6 @@
 import { createContext, useContext, useState, ReactNode } from 'react';
 
-import AiPoweredTools from '@/pages/workspacePages/contents/default/AiPoweredTools';
-import DeepLearnEntry from '@/pages/workspacePages/contents/DeepLearn/entry/DeepLearn';
-import DeepLearnResponse from '@/pages/workspacePages/contents/DeepLearn/response/DeepLearnResponse';
-import DocumentChatEntry from '@/pages/workspacePages/contents/DocumentChat/entry/DocumentChat';
-import DocumentChatResponse from '@/pages/workspacePages/contents/DocumentChat/response/DocumentChatResponse';
-import ProblemHelpEntry from '@/pages/workspacePages/contents/ProblemHelp/entry/ProblemHelp';
-import ProblemHelpResponse from '@/pages/workspacePages/contents/ProblemHelp/response/ProblemHelpResponse';
-import NoteEntry from '@/pages/workspacePages/contents/Note/entry/Note';
-import NoteResponse from '@/pages/workspacePages/contents/Note/response/NoteResponse';
-import Drive from '@/pages/workspacePages/contents/Drive/Drive';
+// Component imports removed - now using componentType and componentProps pattern
 
 // New screen object interface
 export interface ScreenObject {
@@ -20,7 +11,8 @@ export interface ScreenObject {
 
 export interface TabContextItem {
     tab: string;
-    components: React.ReactNode;
+    componentType: string;
+    componentProps: any;
     tabList: any[];
 }
 
@@ -123,7 +115,7 @@ export const TabProvider = ({ children }: { children: ReactNode }) => {
                 {
                     id: 'screen-1',
                     tabList: [
-                        { tab: "Tab1-1", components: <AiPoweredTools />, tabList: [] },
+                        { tab: "Tab1-1", componentType: "AiPoweredTools", componentProps: {}, tabList: [] },
                     ],
                     state: 'full-screen'
                 }
@@ -135,7 +127,7 @@ export const TabProvider = ({ children }: { children: ReactNode }) => {
                 {
                     id: 'screen-1',
                     tabList: [
-                        { tab: "Tab2-1", components: <AiPoweredTools />, tabList: [] },
+                        { tab: "Tab2-1", componentType: "AiPoweredTools", componentProps: {}, tabList: [] },
                     ],
                     state: 'full-screen'
                 }
@@ -168,7 +160,7 @@ export const TabProvider = ({ children }: { children: ReactNode }) => {
                     {
                         id: 'screen-1',
                         tabList: [
-                            { tab: "Tab1-1", components: <AiPoweredTools />, tabList: [] },
+                            { tab: "Tab1-1", componentType: "AiPoweredTools", componentProps: {}, tabList: [] },
                         ],
                         state: 'full-screen'
                     }
@@ -273,7 +265,7 @@ export const TabProvider = ({ children }: { children: ReactNode }) => {
                         {
                             id: newScreenId,
                             tabList: [
-                                { tab: "Tab1-1", components: <AiPoweredTools />, tabList: [] },
+                                { tab: "Tab1-1", componentType: "AiPoweredTools", componentProps: {}, tabList: [] },
                             ],
                             state: 'split-right'
                         }
@@ -298,7 +290,7 @@ export const TabProvider = ({ children }: { children: ReactNode }) => {
                         {
                             id: newScreenId,
                             tabList: [
-                                { tab: "Tab1-1", components: <AiPoweredTools />, tabList: [] },
+                                { tab: "Tab1-1", componentType: "AiPoweredTools", componentProps: {}, tabList: [] },
                             ],
                             state: 'split-right'
                         }
@@ -348,7 +340,7 @@ export const TabProvider = ({ children }: { children: ReactNode }) => {
                         {
                             id: newScreenId,
                             tabList: [
-                                { tab: "Tab1-1", components: <AiPoweredTools />, tabList: [] },
+                                { tab: "Tab1-1", componentType: "AiPoweredTools", componentProps: {}, tabList: [] },
                             ],
                             state: 'full-screen'
                         }
@@ -446,7 +438,7 @@ export const TabProvider = ({ children }: { children: ReactNode }) => {
                     if (screen.id !== screenId) return screen;
                     const newTabList = screen.tabList.map((tab, i) =>
                         i === tabIdx
-                            ? { ...tab, tab: "Deep Learn", components: <DeepLearnEntry /> }
+                            ? { ...tab, tab: "Deep Learn", componentType: "DeepLearnEntry", componentProps: { tabIdx, pageIdx, screenId } }
                             : tab
                     );
                     return { ...screen, tabList: newTabList };
@@ -465,7 +457,7 @@ export const TabProvider = ({ children }: { children: ReactNode }) => {
                     if (screen.id !== screenId) return screen;
                     const newTabList = screen.tabList.map((tab, i) =>
                         i === tabIdx
-                            ? { ...tab, tab: "Deep Learn Response", components: <DeepLearnResponse /> }
+                            ? { ...tab, tab: "Deep Learn Response", componentType: "DeepLearnResponse", componentProps: { tabIdx, pageIdx, screenId } }
                             : tab
                     );
                     return { ...screen, tabList: newTabList };
@@ -484,7 +476,7 @@ export const TabProvider = ({ children }: { children: ReactNode }) => {
                     if (screen.id !== screenId) return screen;
                     const newTabList = screen.tabList.map((tab, i) =>
                         i === tabIdx
-                            ? { ...tab, tab: "Document Chat", components: <DocumentChatEntry /> }
+                            ? { ...tab, tab: "Document Chat", componentType: "DocumentChatEntry", componentProps: { tabIdx, pageIdx, screenId } }
                             : tab
                     );
                     return { ...screen, tabList: newTabList };
@@ -503,7 +495,7 @@ export const TabProvider = ({ children }: { children: ReactNode }) => {
                     if (screen.id !== screenId) return screen;
                     const newTabList = screen.tabList.map((tab, i) =>
                         i === tabIdx
-                            ? { ...tab, tab: "Document Chat Response", components: <DocumentChatResponse /> }
+                            ? { ...tab, tab: "Document Chat Response", componentType: "DocumentChatResponse", componentProps: { tabIdx, pageIdx, screenId } }
                             : tab
                     );
                     return { ...screen, tabList: newTabList };
@@ -522,7 +514,7 @@ export const TabProvider = ({ children }: { children: ReactNode }) => {
                     if (screen.id !== screenId) return screen;
                     const newTabList = screen.tabList.map((tab, i) =>
                         i === tabIdx
-                            ? { ...tab, tab: "Problem Help", components: <ProblemHelpEntry /> }
+                            ? { ...tab, tab: "Problem Help", componentType: "ProblemHelpEntry", componentProps: { tabIdx, pageIdx, screenId } }
                             : tab
                     );
                     return { ...screen, tabList: newTabList };
@@ -541,7 +533,7 @@ export const TabProvider = ({ children }: { children: ReactNode }) => {
                     if (screen.id !== screenId) return screen;
                     const newTabList = screen.tabList.map((tab, i) =>
                         i === tabIdx
-                            ? { ...tab, tab: "Problem Help Response", components: <ProblemHelpResponse onBack={() => {}} /> }
+                            ? { ...tab, tab: "Problem Help Response", componentType: "ProblemHelpResponse", componentProps: { tabIdx, pageIdx, screenId, onBack: () => {} } }
                             : tab
                     );
                     return { ...screen, tabList: newTabList };
@@ -560,7 +552,7 @@ export const TabProvider = ({ children }: { children: ReactNode }) => {
                     if (screen.id !== screenId) return screen;
                     const newTabList = screen.tabList.map((tab, i) =>
                         i === tabIdx
-                            ? { ...tab, tab: "Smart Note", components: <NoteEntry /> }
+                            ? { ...tab, tab: "Smart Note", componentType: "NoteEntry", componentProps: { tabIdx, pageIdx, screenId } }
                             : tab
                     );
                     return { ...screen, tabList: newTabList };
@@ -579,7 +571,7 @@ export const TabProvider = ({ children }: { children: ReactNode }) => {
                     if (screen.id !== screenId) return screen;
                     const newTabList = screen.tabList.map((tab, i) =>
                         i === tabIdx
-                            ? { ...tab, tab: "Note Editor", components: <NoteResponse /> }
+                            ? { ...tab, tab: "Note Editor", componentType: "NoteResponse", componentProps: { tabIdx, pageIdx, screenId } }
                             : tab
                     );
                     return { ...screen, tabList: newTabList };
@@ -601,7 +593,8 @@ export const TabProvider = ({ children }: { children: ReactNode }) => {
                             ? { 
                                 ...tab, 
                                 tab: "Workspace Drive", 
-                                components: <Drive tabIdx={tabIdx} pageIdx={pageIdx} screenId={screenId} />
+                                componentType: "Drive",
+                                componentProps: { tabIdx, pageIdx, screenId }
                               }
                             : tab
                     );

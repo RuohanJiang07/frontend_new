@@ -453,99 +453,99 @@ const DeepLearnResponse: React.FC<DeepLearnResponseProps> = ({ isSplit = false, 
       } else {
         // For new topic mode, use the appropriate function based on response mode
         if (selectedResponseMode === 'quick-search') {
-          await submitQuickSearchQuery(
-            query,
-            webSearchEnabled,
-            (data: string) => {
-              // Update the streaming content
-              setConversation(prev => prev.map(msg => 
-                msg.id === streamingAnswer.id 
-                  ? { ...msg, content: msg.content + data }
-                  : msg
-              ));
-            },
-            (error: string) => {
+        await submitQuickSearchQuery(
+          query,
+          webSearchEnabled,
+          (data: string) => {
+            // Update the streaming content
+            setConversation(prev => prev.map(msg => 
+              msg.id === streamingAnswer.id 
+                ? { ...msg, content: msg.content + data }
+                : msg
+            ));
+          },
+          (error: string) => {
               console.error('Quick search error:', error);
-              setIsLoading(false);
-              // Update the message to show error
-              setConversation(prev => prev.map(msg => 
-                msg.id === streamingAnswer.id 
-                  ? { ...msg, content: `Error: ${error}`, isStreaming: false }
-                  : msg
-              ));
-            },
-            () => {
+            setIsLoading(false);
+            // Update the message to show error
+            setConversation(prev => prev.map(msg => 
+              msg.id === streamingAnswer.id 
+                ? { ...msg, content: `Error: ${error}`, isStreaming: false }
+                : msg
+            ));
+          },
+          () => {
               console.log('Quick search completed');
-              setIsLoading(false);
-              // Mark streaming as complete
-              setConversation(prev => prev.map(msg => 
-                msg.id === streamingAnswer.id 
-                  ? { ...msg, isStreaming: false }
-                  : msg
-              ));
-            },
-            undefined, // additionalComments
-            undefined, // references
-            conversationIdToUse, // existingConversationId - pass current conversation ID
-            undefined, // generatedConversationId - not needed for follow-up
+            setIsLoading(false);
+            // Mark streaming as complete
+            setConversation(prev => prev.map(msg => 
+              msg.id === streamingAnswer.id 
+                ? { ...msg, isStreaming: false }
+                : msg
+            ));
+          },
+          undefined, // additionalComments
+          undefined, // references
+          conversationIdToUse, // existingConversationId - pass current conversation ID
+          undefined, // generatedConversationId - not needed for follow-up
             'new_topic', // searchType - always new_topic for new topic mode
-            pageIdx,
-            screenId,
-            tabIdx
-          );
+          pageIdx,
+          screenId,
+          tabIdx
+        );
                   } else if (selectedResponseMode === 'deep-learn') {
-          await submitDeepLearnDeepQuery(
-            query,
-            webSearchEnabled,
-            (data: DeepLearnStreamingData) => {
-              // Update progress if available
-              if (data.progress) {
-                setDeepLearnProgress({
-                  current: data.progress.current_completions,
-                  total: data.progress.total_expected_completions,
-                  percentage: data.progress.progress_percentage,
-                  status: data.stream_info || 'Processing...'
-                });
-              }
-              
-              // Update the streaming content with the LLM response
-              if (data.llm_response) {
-                setConversation(prev => prev.map(msg => 
-                  msg.id === streamingAnswer.id 
-                    ? { ...msg, content: data.llm_response }
-                    : msg
-                ));
-              }
-            },
-            (error: string) => {
+        await submitDeepLearnDeepQuery(
+          query,
+          webSearchEnabled,
+          (data: DeepLearnStreamingData) => {
+            // Update progress if available
+            if (data.progress) {
+              setDeepLearnProgress({
+                current: data.progress.current_completions,
+                total: data.progress.total_expected_completions,
+                percentage: data.progress.progress_percentage,
+                status: data.stream_info || 'Processing...'
+              });
+            }
+            
+            // Update the streaming content with the LLM response
+            if (data.llm_response) {
+              setConversation(prev => prev.map(msg => 
+                msg.id === streamingAnswer.id 
+                  ? { ...msg, content: data.llm_response }
+                  : msg
+              ));
+            }
+          },
+          (error: string) => {
               console.error('Deep learn error:', error);
-              setIsLoading(false);
-              // Update the message to show error
-              setConversation(prev => prev.map(msg => 
-                msg.id === streamingAnswer.id 
-                  ? { ...msg, content: `Error: ${error}`, isStreaming: false }
-                  : msg
-              ));
-            },
-            () => {
+            setIsLoading(false);
+            // Update the message to show error
+            setConversation(prev => prev.map(msg => 
+              msg.id === streamingAnswer.id 
+                ? { ...msg, content: `Error: ${error}`, isStreaming: false }
+                : msg
+            ));
+          },
+          () => {
               console.log('Deep learn completed');
-              setIsLoading(false);
-              // Mark streaming as complete
-              setConversation(prev => prev.map(msg => 
-                msg.id === streamingAnswer.id 
-                  ? { ...msg, isStreaming: false }
-                  : msg
-              ));
-            },
-            undefined, // additionalComments
-            undefined, // references
-            conversationIdToUse, // existingConversationId - pass current conversation ID
-            undefined, // generatedConversationId - not needed for follow-up
+            setIsLoading(false);
+            // Mark streaming as complete
+            setConversation(prev => prev.map(msg => 
+              msg.id === streamingAnswer.id 
+                ? { ...msg, isStreaming: false }
+                : msg
+            ));
+          },
+          undefined, // additionalComments
+          undefined, // references
+          conversationIdToUse, // existingConversationId - pass current conversation ID
+          undefined, // generatedConversationId - not needed for follow-up
             'new_topic', // searchType - always new_topic for new topic mode
-            pageIdx,
-            screenId,
-            tabIdx
-          );
+          pageIdx,
+          screenId,
+          tabIdx
+        );
         }
       }
     } catch (error) {

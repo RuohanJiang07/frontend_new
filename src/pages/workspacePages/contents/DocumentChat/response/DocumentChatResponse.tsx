@@ -13,6 +13,7 @@ interface DocumentChatResponseProps {
   tabIdx?: number;
   pageIdx?: number;
   screenId?: string;
+  isVisible?: boolean; // Add visibility prop
 }
 
 interface FileItem {
@@ -37,12 +38,12 @@ const DocumentChatResponse: React.FC<DocumentChatResponseProps> = ({
   onBack, 
   tabIdx = 0, 
   pageIdx = 0, 
-  screenId = '' 
+  screenId = '',
+  isVisible = true
 }) => {
   const { switchToDocumentChat, getActiveScreens, activePage } = useTabContext();
   const { error, success } = useToast();
   const conversationMainRef = useRef<HTMLDivElement>(null);
-  const scrollbarThumbRef = useRef<HTMLDivElement>(null);
   const [isScrolling, setIsScrolling] = useState(false);
   const [isReferenceListCollapsed, setIsReferenceListCollapsed] = useState(false);
   const [inputValue, setInputValue] = useState('');
@@ -559,109 +560,8 @@ const DocumentChatResponse: React.FC<DocumentChatResponseProps> = ({
     );
   };
 
-  // Handle scroll events and update custom scrollbar
-  useEffect(() => {
-    const conversationMain = conversationMainRef.current;
-    const scrollbarThumb = scrollbarThumbRef.current;
-    const scrollbarContainer = document.querySelector('.document-chat-response-custom-scrollbar') as HTMLElement;
-    const scrollbarTrack = document.querySelector('.document-chat-response-custom-scrollbar-track') as HTMLElement;
-    
-    if (!conversationMain || !scrollbarThumb || !scrollbarContainer || !scrollbarTrack) return;
-
-    let scrollTimeout: number;
-
-    const updateScrollbar = () => {
-      const { scrollTop, scrollHeight, clientHeight } = conversationMain;
-      
-      // Only show scrollbar if content is scrollable
-      if (scrollHeight <= clientHeight) {
-        scrollbarContainer.style.display = 'none';
-        return;
-      }
-      
-      scrollbarContainer.style.display = 'block';
-      
-      const scrollPercentage = scrollTop / (scrollHeight - clientHeight);
-      
-      // Calculate scrollbar height to extend to bottom of screen
-      const viewportHeight = window.innerHeight;
-      const scrollbarHeight = viewportHeight - 100; // 100px is the top offset from CSS
-      
-      // Update scrollbar thumb position and height
-      const thumbHeight = Math.max(30, (clientHeight / scrollHeight) * scrollbarHeight); // Minimum 30px height
-      const maxThumbTop = scrollbarHeight - thumbHeight;
-      
-      scrollbarThumb.style.top = `${scrollPercentage * maxThumbTop}px`;
-      scrollbarThumb.style.height = `${thumbHeight}px`;
-      
-      // Set scrollbar container height to extend to bottom of screen
-      scrollbarContainer.style.height = `${scrollbarHeight}px`;
-    };
-
-    const handleScroll = () => {
-      updateScrollbar();
-      
-      // Show scrollbar when scrolling
-      scrollbarContainer.classList.add('scrolling');
-      
-      // Hide scrollbar after scrolling stops
-      clearTimeout(scrollTimeout);
-      scrollTimeout = setTimeout(() => {
-        scrollbarContainer.classList.remove('scrolling');
-      }, 1000); // Hide after 1 second of no scrolling
-    };
-
-    // Handle clicks on scrollbar track
-    const handleTrackClick = (e: MouseEvent) => {
-      const { scrollHeight, clientHeight } = conversationMain;
-      const scrollbarHeight = window.innerHeight - 100;
-      
-      // Calculate click position relative to scrollbar
-      const rect = scrollbarTrack.getBoundingClientRect();
-      const clickY = e.clientY - rect.top;
-      const clickPercentage = clickY / scrollbarHeight;
-      
-      // Scroll to the clicked position
-      const targetScrollTop = clickPercentage * (scrollHeight - clientHeight);
-      conversationMain.scrollTop = targetScrollTop;
-    };
-
-    // Handle global wheel events for the entire tab area
-    const handleGlobalWheel = (e: WheelEvent) => {
-      // Check if the target is within the tab area but not in conversation-main
-      const target = e.target as HTMLElement;
-      const isInConversationMain = conversationMain.contains(target);
-      
-      // If not in conversation-main but in the tab area, control conversation-main scrolling
-      if (!isInConversationMain) {
-        e.preventDefault();
-        
-        const { scrollTop, scrollHeight, clientHeight } = conversationMain;
-        const scrollDelta = e.deltaY;
-        const newScrollTop = scrollTop + scrollDelta;
-        
-        // Ensure scroll stays within bounds
-        const maxScrollTop = scrollHeight - clientHeight;
-        conversationMain.scrollTop = Math.max(0, Math.min(newScrollTop, maxScrollTop));
-      }
-    };
-
-    conversationMain.addEventListener('scroll', handleScroll);
-    scrollbarTrack.addEventListener('click', handleTrackClick);
-    window.addEventListener('wheel', handleGlobalWheel, { passive: false });
-    window.addEventListener('resize', updateScrollbar);
-    
-    // Initial update
-    updateScrollbar();
-
-    return () => {
-      conversationMain.removeEventListener('scroll', handleScroll);
-      scrollbarTrack.removeEventListener('click', handleTrackClick);
-      window.removeEventListener('wheel', handleGlobalWheel);
-      window.removeEventListener('resize', updateScrollbar);
-      clearTimeout(scrollTimeout);
-    };
-  }, []);
+  // Simplified scroll handling - no custom scrollbar or global wheel events
+  // The conversation main area will use standard browser scrolling like other response pages
 
   return (
     <div className="document-chat-response">
@@ -937,15 +837,6 @@ const DocumentChatResponse: React.FC<DocumentChatResponseProps> = ({
         </div>
       </div>
 
-      {/* Custom scrollbar positioned at tab level */}
-      <div className="document-chat-response-custom-scrollbar">
-        <div className="document-chat-response-custom-scrollbar-track">
-          <div 
-            className="document-chat-response-custom-scrollbar-thumb"
-            ref={scrollbarThumbRef}
-          />
-        </div>
-      </div>
     </div>
   );
 };
