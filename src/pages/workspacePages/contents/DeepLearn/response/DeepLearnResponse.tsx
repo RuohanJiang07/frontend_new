@@ -2,6 +2,7 @@ import React, { useState, useEffect } from 'react';
 import { useTabContext } from '../../../workspaceFrame/TabContext';
 import { submitQuickSearchQuery } from '../../../../../api/workspaces/deep_learn/deepLearn_quicksearch';
 import { submitDeepLearnDeepQuery, DeepLearnStreamingData } from '../../../../../api/workspaces/deep_learn/deepLearn_deeplearn';
+import { submitFollowUpQuery } from '../../../../../api/workspaces/deep_learn/deepLearn_followup';
 import { MarkdownRenderer } from '../../../../../components/ui/markdown';
 import './DeepLearnResponse.css';
 
@@ -204,8 +205,6 @@ const DeepLearnResponse: React.FC<DeepLearnResponseProps> = ({ isSplit = false, 
           query,
           webSearch,
           (data: DeepLearnStreamingData) => {
-            console.log('📥 Received deep learn streaming data:', data);
-            
             // Update progress if available
             if (data.progress) {
               setDeepLearnProgress({
@@ -371,8 +370,9 @@ const DeepLearnResponse: React.FC<DeepLearnResponseProps> = ({ isSplit = false, 
     console.log('🌐 Web search enabled:', webSearchEnabled);
     console.log('🎯 Response mode:', selectedResponseMode);
 
-    // Determine the mode for the new query
-    const queryMode = selectedResponseMode;
+    // For follow-up mode, always use quick-search display format
+    // For new topic mode, use the selected response mode
+    const displayMode = selectedMode === 'follow-up' ? 'quick-search' : selectedResponseMode;
 
     // Add the new question to conversation
     const newQuestion: ConversationMessage = {
@@ -380,7 +380,7 @@ const DeepLearnResponse: React.FC<DeepLearnResponseProps> = ({ isSplit = false, 
       type: 'question',
       content: query,
       timestamp: new Date().toLocaleString(),
-      mode: queryMode
+      mode: displayMode
     };
 
     // Add streaming answer message
@@ -389,13 +389,16 @@ const DeepLearnResponse: React.FC<DeepLearnResponseProps> = ({ isSplit = false, 
       type: 'answer',
       content: '',
       timestamp: new Date().toLocaleString(),
-      mode: queryMode,
+      mode: displayMode,
       isStreaming: true
     };
 
     setConversation(prev => [...prev, newQuestion, streamingAnswer]);
     setIsLoading(true);
-    setIsInteractiveLoading(true); // Start interactive loading for new query
+    // Only start interactive loading if NOT in follow-up mode (since follow-up doesn't call interactive API)
+    if (selectedMode !== 'follow-up') {
+      setIsInteractiveLoading(true);
+    }
     setDeepLearnProgress(null); // Clear previous progress
     setInputValue(''); // Clear input
 
@@ -403,8 +406,9 @@ const DeepLearnResponse: React.FC<DeepLearnResponseProps> = ({ isSplit = false, 
     const conversationIdToUse = currentConversationId || 'dl-c-' + Date.now();
 
     try {
-      if (queryMode === 'quick-search') {
-        await submitQuickSearchQuery(
+      // For follow-up mode, ALWAYS use the follow-up function regardless of response mode
+      if (selectedMode === 'follow-up') {
+        await submitFollowUpQuery(
           query,
           webSearchEnabled,
           (data: string) => {
@@ -416,8 +420,10 @@ const DeepLearnResponse: React.FC<DeepLearnResponseProps> = ({ isSplit = false, 
             ));
           },
           (error: string) => {
-            console.error('Follow-up quick search error:', error);
+            console.error('Follow-up search error:', error);
             setIsLoading(false);
+            // For follow-up mode, we don't need to wait for interactive loading since it's not called
+            setIsInteractiveLoading(false);
             // Update the message to show error
             setConversation(prev => prev.map(msg => 
               msg.id === streamingAnswer.id 
@@ -426,8 +432,10 @@ const DeepLearnResponse: React.FC<DeepLearnResponseProps> = ({ isSplit = false, 
             ));
           },
           () => {
-            console.log('Follow-up quick search completed');
+            console.log('Follow-up search completed');
             setIsLoading(false);
+            // For follow-up mode, we don't need to wait for interactive loading since it's not called
+            setIsInteractiveLoading(false);
             // Mark streaming as complete
             setConversation(prev => prev.map(msg => 
               msg.id === streamingAnswer.id 
@@ -435,70 +443,110 @@ const DeepLearnResponse: React.FC<DeepLearnResponseProps> = ({ isSplit = false, 
                 : msg
             ));
           },
+          conversationIdToUse, // conversationId - required for follow-up
           undefined, // additionalComments
           undefined, // references
-          conversationIdToUse, // existingConversationId - pass current conversation ID
-          undefined, // generatedConversationId - not needed for follow-up
-          selectedMode === 'follow-up' ? 'followup' : 'new_topic', // searchType based on user selection
           pageIdx,
           screenId,
           tabIdx
         );
-      } else if (queryMode === 'deep-learn') {
-        await submitDeepLearnDeepQuery(
-          query,
-          webSearchEnabled,
-          (data: DeepLearnStreamingData) => {
-            console.log('📥 Received follow-up deep learn streaming data:', data);
-            
-            // Update progress if available
-            if (data.progress) {
-              setDeepLearnProgress({
-                current: data.progress.current_completions,
-                total: data.progress.total_expected_completions,
-                percentage: data.progress.progress_percentage,
-                status: data.stream_info || 'Processing...'
-              });
-            }
-            
-            // Update the streaming content with the LLM response
-            if (data.llm_response) {
+      } else {
+        // For new topic mode, use the appropriate function based on response mode
+        if (selectedResponseMode === 'quick-search') {
+          await submitQuickSearchQuery(
+            query,
+            webSearchEnabled,
+            (data: string) => {
+              // Update the streaming content
               setConversation(prev => prev.map(msg => 
                 msg.id === streamingAnswer.id 
-                  ? { ...msg, content: data.llm_response }
+                  ? { ...msg, content: msg.content + data }
                   : msg
               ));
-            }
-          },
-          (error: string) => {
-            console.error('Follow-up deep learn error:', error);
-            setIsLoading(false);
-            // Update the message to show error
-            setConversation(prev => prev.map(msg => 
-              msg.id === streamingAnswer.id 
-                ? { ...msg, content: `Error: ${error}`, isStreaming: false }
-                : msg
-            ));
-          },
-          () => {
-            console.log('Follow-up deep learn completed');
-            setIsLoading(false);
-            // Mark streaming as complete
-            setConversation(prev => prev.map(msg => 
-              msg.id === streamingAnswer.id 
-                ? { ...msg, isStreaming: false }
-                : msg
-            ));
-          },
-          undefined, // additionalComments
-          undefined, // references
-          conversationIdToUse, // existingConversationId - pass current conversation ID
-          undefined, // generatedConversationId - not needed for follow-up
-          selectedMode === 'follow-up' ? 'followup' : 'new_topic', // searchType based on user selection
-          pageIdx,
-          screenId,
-          tabIdx
-        );
+            },
+            (error: string) => {
+              console.error('Quick search error:', error);
+              setIsLoading(false);
+              // Update the message to show error
+              setConversation(prev => prev.map(msg => 
+                msg.id === streamingAnswer.id 
+                  ? { ...msg, content: `Error: ${error}`, isStreaming: false }
+                  : msg
+              ));
+            },
+            () => {
+              console.log('Quick search completed');
+              setIsLoading(false);
+              // Mark streaming as complete
+              setConversation(prev => prev.map(msg => 
+                msg.id === streamingAnswer.id 
+                  ? { ...msg, isStreaming: false }
+                  : msg
+              ));
+            },
+            undefined, // additionalComments
+            undefined, // references
+            conversationIdToUse, // existingConversationId - pass current conversation ID
+            undefined, // generatedConversationId - not needed for follow-up
+            'new_topic', // searchType - always new_topic for new topic mode
+            pageIdx,
+            screenId,
+            tabIdx
+          );
+                  } else if (selectedResponseMode === 'deep-learn') {
+          await submitDeepLearnDeepQuery(
+            query,
+            webSearchEnabled,
+            (data: DeepLearnStreamingData) => {
+              // Update progress if available
+              if (data.progress) {
+                setDeepLearnProgress({
+                  current: data.progress.current_completions,
+                  total: data.progress.total_expected_completions,
+                  percentage: data.progress.progress_percentage,
+                  status: data.stream_info || 'Processing...'
+                });
+              }
+              
+              // Update the streaming content with the LLM response
+              if (data.llm_response) {
+                setConversation(prev => prev.map(msg => 
+                  msg.id === streamingAnswer.id 
+                    ? { ...msg, content: data.llm_response }
+                    : msg
+                ));
+              }
+            },
+            (error: string) => {
+              console.error('Deep learn error:', error);
+              setIsLoading(false);
+              // Update the message to show error
+              setConversation(prev => prev.map(msg => 
+                msg.id === streamingAnswer.id 
+                  ? { ...msg, content: `Error: ${error}`, isStreaming: false }
+                  : msg
+              ));
+            },
+            () => {
+              console.log('Deep learn completed');
+              setIsLoading(false);
+              // Mark streaming as complete
+              setConversation(prev => prev.map(msg => 
+                msg.id === streamingAnswer.id 
+                  ? { ...msg, isStreaming: false }
+                  : msg
+              ));
+            },
+            undefined, // additionalComments
+            undefined, // references
+            conversationIdToUse, // existingConversationId - pass current conversation ID
+            undefined, // generatedConversationId - not needed for follow-up
+            'new_topic', // searchType - always new_topic for new topic mode
+            pageIdx,
+            screenId,
+            tabIdx
+          );
+        }
       }
     } catch (error) {
       console.error('Error submitting follow-up query:', error);
