@@ -4,6 +4,7 @@ import { submitQuickSearchQuery } from '../../../../../api/workspaces/deep_learn
 import { submitDeepLearnDeepQuery, DeepLearnStreamingData } from '../../../../../api/workspaces/deep_learn/deepLearn_deeplearn';
 import { submitFollowUpQuery } from '../../../../../api/workspaces/deep_learn/deepLearn_followup';
 import { MarkdownRenderer } from '../../../../../components/ui/markdown';
+import { deepLearnStorageManager } from './deepLearnStorageManager';
 import './DeepLearnResponse.css';
 
 interface DeepLearnResponseProps {
@@ -79,6 +80,8 @@ const DeepLearnResponse: React.FC<DeepLearnResponseProps> = ({ isSplit = false, 
   const [interactiveData, setInteractiveData] = useState<InteractiveData | null>(null);
   const [isInteractiveLoading, setIsInteractiveLoading] = useState(true); // Start with loading true
   const [currentConversationId, setCurrentConversationId] = useState<string>(''); // Store current conversation ID
+  const [currentChunkIndex, setCurrentChunkIndex] = useState<number>(0); // Track current focus chunk
+  const [chunkCreated, setChunkCreated] = useState<boolean>(false); // Prevent duplicate chunk creation
   const [deepLearnProgress, setDeepLearnProgress] = useState<{
     current: number;
     total: number;
@@ -120,6 +123,20 @@ const DeepLearnResponse: React.FC<DeepLearnResponseProps> = ({ isSplit = false, 
       // Set the response mode based on the initial mode
       setSelectedResponseMode(mode as 'deep-learn' | 'quick-search');
       
+      // Initialize storage manager tracking
+      const tabId = `${pageIdx}-${screenId}-${tabIdx}`;
+      
+      // Clear existing conversation data for new conversation
+      deepLearnStorageManager.clearConversationData(tabId);
+      console.log(`🗑️ Cleared old conversation data for new conversation: ${conversationId}`);
+      
+      // Initialize new conversation data
+      deepLearnStorageManager.initializeConversation(tabId, conversationId);
+      console.log(`🚀 Initialized new conversation data for: ${conversationId}`);
+      
+      const chunkCount = deepLearnStorageManager.getChunkCount(tabId);
+      setCurrentChunkIndex(chunkCount);
+      
       // Add the initial question to the conversation
       const initialQuestion: ConversationMessage = {
         id: '1',
@@ -132,6 +149,11 @@ const DeepLearnResponse: React.FC<DeepLearnResponseProps> = ({ isSplit = false, 
       setConversation([initialQuestion]);
       setIsLoading(true);
       setDeepLearnProgress(null); // Clear any previous progress
+      
+      // Create the initial chunk immediately so interactive data can be stored
+      deepLearnStorageManager.addConversationChunk(tabId, 'new_topic');
+      setChunkCreated(true);
+      console.log(`💾 Created initial chunk 0 for new conversation: ${conversationId}`);
       
       if (mode === 'quick-search') {
         // Add a streaming answer message for quick search
@@ -171,12 +193,15 @@ const DeepLearnResponse: React.FC<DeepLearnResponseProps> = ({ isSplit = false, 
           () => {
             console.log('Quick search completed');
             setIsLoading(false);
-            // Mark streaming as complete
+            // Mark streaming as complete and save to storage
             setConversation(prev => prev.map(msg => 
               msg.id === '2' 
                 ? { ...msg, isStreaming: false }
                 : msg
             ));
+            
+            // Chunk was already created at query start
+            console.log(`✅ Initial query completed for chunk 0`);
           },
           undefined, // additionalComments
           undefined, // references
@@ -237,12 +262,15 @@ const DeepLearnResponse: React.FC<DeepLearnResponseProps> = ({ isSplit = false, 
           () => {
             console.log('Deep learn completed');
             setIsLoading(false);
-            // Mark streaming as complete
+            // Mark streaming as complete and save to storage
             setConversation(prev => prev.map(msg => 
               msg.id === '2' 
                 ? { ...msg, isStreaming: false }
                 : msg
             ));
+            
+            // Chunk was already created at query start
+            console.log(`✅ Initial query completed for chunk 0`);
           },
           undefined, // additionalComments
           undefined, // references
@@ -262,10 +290,9 @@ const DeepLearnResponse: React.FC<DeepLearnResponseProps> = ({ isSplit = false, 
       localStorage.removeItem('current_deeplearn_web_search');
       
       // Clear any existing interactive data for this tab
-      const tabId = `${pageIdx}-${screenId}-${tabIdx}`;
       localStorage.removeItem(`deeplearn_interactive_${tabId}`);
     }
-  }, []);
+  }, [pageIdx, screenId, tabIdx]);
 
   // Set a timeout to stop interactive loading after 60 seconds (fallback)
   useEffect(() => {
@@ -282,25 +309,32 @@ const DeepLearnResponse: React.FC<DeepLearnResponseProps> = ({ isSplit = false, 
 
   // Listen for interactive data updates with tab isolation
   useEffect(() => {
-    console.log('👂 Setting up interactive data event listener for tab isolation');
+    const tabId = `${pageIdx}-${screenId}-${tabIdx}`;
+    console.log('👂 Setting up interactive data event listener for tab isolation:', tabId);
     
     const handleInteractiveUpdate = (event: CustomEvent) => {
-      const { tabId, data } = event.detail;
-      const currentTabId = `${pageIdx}-${screenId}-${tabIdx}`;
+      const { tabId: eventTabId, data } = event.detail;
       
       // Only process events for this specific tab
-      if (tabId !== currentTabId) {
-        console.log('🚫 Ignoring interactive update for different tab:', tabId, 'current tab:', currentTabId);
+      if (eventTabId !== tabId) {
+        console.log('🚫 Ignoring interactive update for different tab:', eventTabId, 'current tab:', tabId);
         return;
       }
       
-      console.log('📡 Received interactive data update for current tab:', tabId);
+      console.log('📡 Received interactive data update for current tab:', eventTabId);
       console.log('📊 Data structure:', {
         hasVideos: data?.interactive_content?.recommended_videos?.length > 0,
         hasWebpages: data?.interactive_content?.related_webpages?.length > 0,
         videosLength: data?.interactive_content?.recommended_videos?.length,
         webpagesLength: data?.interactive_content?.related_webpages?.length
       });
+      
+      // Save interactive data to storage for current chunk
+      if (currentChunkIndex >= 0) {
+        deepLearnStorageManager.addInteractiveToChunk(tabId, currentChunkIndex, data);
+        console.log(`🎯 Saved interactive data to chunk ${currentChunkIndex} in storage`);
+        deepLearnStorageManager.debugLogStorage(tabId);
+      }
       
       setInteractiveData(data);
       
@@ -315,13 +349,13 @@ const DeepLearnResponse: React.FC<DeepLearnResponseProps> = ({ isSplit = false, 
     };
 
     window.addEventListener('deeplearn-interactive-update', handleInteractiveUpdate as EventListener);
-    console.log('✅ Interactive event listener registered for tab:', `${pageIdx}-${screenId}-${tabIdx}`);
+    console.log('✅ Interactive event listener registered for tab:', tabId);
 
     return () => {
-      console.log('🧹 Cleaning up interactive event listener for tab:', `${pageIdx}-${screenId}-${tabIdx}`);
+      console.log('🧹 Cleaning up interactive event listener for tab:', tabId);
       window.removeEventListener('deeplearn-interactive-update', handleInteractiveUpdate as EventListener);
     };
-  }, [pageIdx, screenId, tabIdx]);
+  }, [pageIdx, screenId, tabIdx, currentChunkIndex]);
 
   const handleBackClick = () => {
     // Navigate back to deep learn entry page
@@ -365,10 +399,23 @@ const DeepLearnResponse: React.FC<DeepLearnResponseProps> = ({ isSplit = false, 
     if (!inputValue.trim() || isLoading) return;
 
     const query = inputValue.trim();
-    console.log('📝 Submitting follow-up query:', query);
+    const tabId = `${pageIdx}-${screenId}-${tabIdx}`;
+    
+    // Determine search type based on selected mode
+    const searchType: 'new_topic' | 'followup' = selectedMode === 'follow-up' ? 'followup' : 'new_topic';
+    
+    console.log('📝 Submitting query:', query);
     console.log('🔍 Current mode:', selectedMode);
     console.log('🌐 Web search enabled:', webSearchEnabled);
-    console.log('🎯 Response mode:', selectedResponseMode);
+    if (selectedMode === 'new-topic') {
+      console.log('🎯 Response mode:', selectedResponseMode);
+    }
+
+    // Update chunk index for storage tracking
+    const newChunkIndex = deepLearnStorageManager.getChunkCount(tabId);
+    setCurrentChunkIndex(newChunkIndex);
+    console.log(`🔄 Resetting chunkCreated flag from ${chunkCreated} to false for new query`);
+    setChunkCreated(false); // Reset flag for new query
 
     // For follow-up mode, always use quick-search display format
     // For new topic mode, use the selected response mode
@@ -395,16 +442,46 @@ const DeepLearnResponse: React.FC<DeepLearnResponseProps> = ({ isSplit = false, 
 
     setConversation(prev => [...prev, newQuestion, streamingAnswer]);
     setIsLoading(true);
+    
     // Only start interactive loading if NOT in follow-up mode (since follow-up doesn't call interactive API)
     if (selectedMode !== 'follow-up') {
       setIsInteractiveLoading(true);
+    } else {
+      // For followup mode, find the last new_topic chunk to get interactive content
+      const conversationData = deepLearnStorageManager.getConversationData(tabId);
+      if (conversationData && conversationData.chunks.length > 0) {
+        // Find the last new_topic chunk
+        let lastNewTopicChunk = null;
+        for (let i = conversationData.chunks.length - 1; i >= 0; i--) {
+          if (conversationData.chunks[i].search_type === 'new_topic') {
+            lastNewTopicChunk = conversationData.chunks[i];
+            break;
+          }
+        }
+        
+        if (lastNewTopicChunk && lastNewTopicChunk.interactive) {
+          setInteractiveData({
+            success: true,
+            conversation_title: lastNewTopicChunk.interactive.conversation_title,
+            topic: '',
+            roadmap_node_index: 0,
+            concept_map: { nodes: [] },
+            interactive_content: lastNewTopicChunk.interactive,
+            files_updated: { conversation_json: '', concept_map_json: '' },
+            timestamp: new Date().toISOString()
+          });
+          console.log(`🎯 Loaded interactive content for followup from last new_topic chunk ${lastNewTopicChunk.index}`);
+        }
+      }
+      setIsInteractiveLoading(false);
     }
+    
     setDeepLearnProgress(null); // Clear previous progress
     setInputValue(''); // Clear input
 
     // Use stored conversation ID or generate new one
     const conversationIdToUse = currentConversationId || 'dl-c-' + Date.now();
-
+    
     try {
       // For follow-up mode, ALWAYS use the follow-up function regardless of response mode
       if (selectedMode === 'follow-up') {
@@ -422,7 +499,6 @@ const DeepLearnResponse: React.FC<DeepLearnResponseProps> = ({ isSplit = false, 
           (error: string) => {
             console.error('Follow-up search error:', error);
             setIsLoading(false);
-            // For follow-up mode, we don't need to wait for interactive loading since it's not called
             setIsInteractiveLoading(false);
             // Update the message to show error
             setConversation(prev => prev.map(msg => 
@@ -433,15 +509,30 @@ const DeepLearnResponse: React.FC<DeepLearnResponseProps> = ({ isSplit = false, 
           },
           () => {
             console.log('Follow-up search completed');
+            console.log(`🔍 Checking if followup chunk should be created - chunkCreated: ${chunkCreated}`);
             setIsLoading(false);
-            // For follow-up mode, we don't need to wait for interactive loading since it's not called
             setIsInteractiveLoading(false);
-            // Mark streaming as complete
+            
+            // Mark streaming as complete and save to storage
             setConversation(prev => prev.map(msg => 
               msg.id === streamingAnswer.id 
                 ? { ...msg, isStreaming: false }
                 : msg
             ));
+            
+            // Save chunk to storage manager (only the required fields) - outside of setConversation
+            // Use a more reliable check - if this chunk index doesn't exist yet, create it
+            const currentConversationData = deepLearnStorageManager.getConversationData(tabId);
+            const chunkExists = currentConversationData?.chunks.find(c => c.index === newChunkIndex);
+            
+            if (!chunkExists) {
+              console.log(`💾 Creating followup chunk ${newChunkIndex} for tab: ${tabId}`);
+              deepLearnStorageManager.addConversationChunk(tabId, 'followup');
+              setChunkCreated(true);
+              console.log(`✅ Followup chunk ${newChunkIndex} created successfully`);
+            } else {
+              console.log(`⚠️ Followup chunk ${newChunkIndex} already exists, skipping`);
+            }
           },
           conversationIdToUse, // conversationId - required for follow-up
           undefined, // additionalComments
@@ -451,105 +542,119 @@ const DeepLearnResponse: React.FC<DeepLearnResponseProps> = ({ isSplit = false, 
           tabIdx
         );
       } else {
-        // For new topic mode, use the appropriate function based on response mode
-        if (selectedResponseMode === 'quick-search') {
-        await submitQuickSearchQuery(
-          query,
-          webSearchEnabled,
-          (data: string) => {
-            // Update the streaming content
-            setConversation(prev => prev.map(msg => 
-              msg.id === streamingAnswer.id 
-                ? { ...msg, content: msg.content + data }
-                : msg
-            ));
-          },
-          (error: string) => {
-              console.error('Quick search error:', error);
-            setIsLoading(false);
-            // Update the message to show error
-            setConversation(prev => prev.map(msg => 
-              msg.id === streamingAnswer.id 
-                ? { ...msg, content: `Error: ${error}`, isStreaming: false }
-                : msg
-            ));
-          },
-          () => {
-              console.log('Quick search completed');
-            setIsLoading(false);
-            // Mark streaming as complete
-            setConversation(prev => prev.map(msg => 
-              msg.id === streamingAnswer.id 
-                ? { ...msg, isStreaming: false }
-                : msg
-            ));
-          },
-          undefined, // additionalComments
-          undefined, // references
-          conversationIdToUse, // existingConversationId - pass current conversation ID
-          undefined, // generatedConversationId - not needed for follow-up
-            'new_topic', // searchType - always new_topic for new topic mode
-          pageIdx,
-          screenId,
-          tabIdx
-        );
-                  } else if (selectedResponseMode === 'deep-learn') {
-        await submitDeepLearnDeepQuery(
-          query,
-          webSearchEnabled,
-          (data: DeepLearnStreamingData) => {
-            // Update progress if available
-            if (data.progress) {
-              setDeepLearnProgress({
-                current: data.progress.current_completions,
-                total: data.progress.total_expected_completions,
-                percentage: data.progress.progress_percentage,
-                status: data.stream_info || 'Processing...'
-              });
-            }
-            
-            // Update the streaming content with the LLM response
-            if (data.llm_response) {
+        // For new topic mode - call the appropriate API based on response mode
+        console.log(`🚀 Starting new topic query with response mode: ${selectedResponseMode}`);
+        
+        // Create the chunk immediately for new topic mode to ensure interactive data can be stored
+        const currentConversationData = deepLearnStorageManager.getConversationData(tabId);
+        const chunkExists = currentConversationData?.chunks.find(c => c.index === newChunkIndex);
+        
+        if (!chunkExists) {
+          console.log(`💾 Pre-creating new topic chunk ${newChunkIndex} for tab: ${tabId}`);
+          deepLearnStorageManager.addConversationChunk(tabId, 'new_topic');
+          setChunkCreated(true);
+          console.log(`✅ New topic chunk ${newChunkIndex} pre-created successfully`);
+        }
+        
+        if (selectedResponseMode === 'deep-learn') {
+          // Use deep learn endpoint for new topic
+          await submitDeepLearnDeepQuery(
+            query,
+            webSearchEnabled,
+            (data: DeepLearnStreamingData) => {
+              // Update the streaming content - use llm_response for actual content
+              const contentToAdd = data.llm_response || data.stream_info || '';
               setConversation(prev => prev.map(msg => 
                 msg.id === streamingAnswer.id 
-                  ? { ...msg, content: data.llm_response }
+                  ? { ...msg, content: contentToAdd }
                   : msg
               ));
-            }
-          },
-          (error: string) => {
-              console.error('Deep learn error:', error);
-            setIsLoading(false);
-            // Update the message to show error
-            setConversation(prev => prev.map(msg => 
-              msg.id === streamingAnswer.id 
-                ? { ...msg, content: `Error: ${error}`, isStreaming: false }
-                : msg
-            ));
-          },
-          () => {
-              console.log('Deep learn completed');
-            setIsLoading(false);
-            // Mark streaming as complete
-            setConversation(prev => prev.map(msg => 
-              msg.id === streamingAnswer.id 
-                ? { ...msg, isStreaming: false }
-                : msg
-            ));
-          },
-          undefined, // additionalComments
-          undefined, // references
-          conversationIdToUse, // existingConversationId - pass current conversation ID
-          undefined, // generatedConversationId - not needed for follow-up
-            'new_topic', // searchType - always new_topic for new topic mode
-          pageIdx,
-          screenId,
-          tabIdx
-        );
+            },
+            (error: string) => {
+              console.error('Deep learn search error:', error);
+              setIsLoading(false);
+              setIsInteractiveLoading(false);
+              // Update the message to show error
+              setConversation(prev => prev.map(msg => 
+                msg.id === streamingAnswer.id 
+                  ? { ...msg, content: `Error: ${error}`, isStreaming: false }
+                  : msg
+              ));
+            },
+            () => {
+              console.log('Deep learn search completed');
+              setIsLoading(false);
+              
+              // Mark streaming as complete
+              setConversation(prev => prev.map(msg => 
+                msg.id === streamingAnswer.id 
+                  ? { ...msg, isStreaming: false }
+                  : msg
+              ));
+              
+              // Chunk was already created at query start
+              console.log(`✅ New topic query completed for chunk ${newChunkIndex}`)
+            },
+            undefined, // additionalComments
+            undefined, // references
+            conversationIdToUse, // existingConversationId
+            undefined, // generatedConversationId
+            'new_topic', // searchType
+            pageIdx,
+            screenId,
+            tabIdx
+          );
+        } else {
+          // Use quick search endpoint for new topic
+          await submitQuickSearchQuery(
+            query,
+            webSearchEnabled,
+            (data: string) => {
+              // Update the streaming content
+              setConversation(prev => prev.map(msg => 
+                msg.id === streamingAnswer.id 
+                  ? { ...msg, content: msg.content + data }
+                  : msg
+              ));
+            },
+            (error: string) => {
+              console.error('Quick search error:', error);
+              setIsLoading(false);
+              setIsInteractiveLoading(false);
+              // Update the message to show error
+              setConversation(prev => prev.map(msg => 
+                msg.id === streamingAnswer.id 
+                  ? { ...msg, content: `Error: ${error}`, isStreaming: false }
+                  : msg
+              ));
+            },
+            () => {
+              console.log('Quick search completed');
+              setIsLoading(false);
+              
+              // Mark streaming as complete
+              setConversation(prev => prev.map(msg => 
+                msg.id === streamingAnswer.id 
+                  ? { ...msg, isStreaming: false }
+                  : msg
+              ));
+              
+              // Chunk was already created at query start
+              console.log(`✅ New topic query completed for chunk ${newChunkIndex}`)
+            },
+            undefined, // additionalComments
+            undefined, // references
+            conversationIdToUse, // existingConversationId
+            undefined, // generatedConversationId
+            'new_topic', // searchType
+            pageIdx,
+            screenId,
+            tabIdx
+          );
         }
       }
     } catch (error) {
-      console.error('Error submitting follow-up query:', error);
+      console.error('Error submitting query:', error);
       setIsLoading(false);
     }
   };
