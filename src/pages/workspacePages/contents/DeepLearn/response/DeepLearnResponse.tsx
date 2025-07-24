@@ -22,6 +22,7 @@ interface ConversationMessage {
   timestamp: string;
   mode: 'deep-learn' | 'quick-search';
   isStreaming?: boolean;
+  chunkIndex?: number; // Add chunk index to each message
 }
 
 interface InteractiveData {
@@ -64,6 +65,42 @@ interface InteractiveData {
 const DeepLearnResponse: React.FC<DeepLearnResponseProps> = ({ isSplit = false, onBack, tabIdx = 0, pageIdx = 0, screenId = '' }) => {
   const { switchToDeepLearn, getActiveScreens, activePage } = useTabContext();
   
+  // Helper function to update conversation message content
+  const updateConversationMessage = (messageId: string, content: string, isStreaming?: boolean) => {
+    setConversation(prev => prev.map(msg => 
+      msg.id === messageId 
+        ? { ...msg, content, isStreaming }
+        : msg
+    ));
+  };
+  
+  // Helper function to append content to streaming message
+  const appendToStreamingMessage = (messageId: string, data: string) => {
+    setConversation(prev => prev.map(msg => 
+      msg.id === messageId 
+        ? { ...msg, content: msg.content + data }
+        : msg
+    ));
+  };
+  
+  // Helper function to handle API errors
+  const handleApiError = (messageId: string, error: string) => {
+    console.error('API error:', error);
+    setIsLoading(false);
+    setIsInteractiveLoading(false);
+    updateConversationMessage(messageId, `Error: ${error}`, false);
+  };
+  
+  // Helper function to complete streaming
+  const completeStreaming = (messageId: string) => {
+    setIsLoading(false);
+    setConversation(prev => prev.map(msg => 
+      msg.id === messageId 
+        ? { ...msg, isStreaming: false }
+        : msg
+    ));
+  };
+  
   // Detect if we're in split screen mode
   const activeScreens = getActiveScreens(activePage);
   const isInSplitMode = activeScreens.length > 1 && !activeScreens.some(screen => screen.state === 'full-screen');
@@ -80,8 +117,10 @@ const DeepLearnResponse: React.FC<DeepLearnResponseProps> = ({ isSplit = false, 
   const [interactiveData, setInteractiveData] = useState<InteractiveData | null>(null);
   const [isInteractiveLoading, setIsInteractiveLoading] = useState(true); // Start with loading true
   const [currentConversationId, setCurrentConversationId] = useState<string>(''); // Store current conversation ID
-  const [currentChunkIndex, setCurrentChunkIndex] = useState<number>(0); // Track current focus chunk
+  const [currentChunkIndex, setCurrentChunkIndex] = useState<number>(0); // Track current creation chunk
+  const [focusedChunkIndex, setFocusedChunkIndex] = useState<number>(0); // Track currently focused/viewed chunk
   const [chunkCreated, setChunkCreated] = useState<boolean>(false); // Prevent duplicate chunk creation
+  const [currentInteractiveIndex, setCurrentInteractiveIndex] = useState<number>(-1); // Track which interactive content index is currently displayed
   const [deepLearnProgress, setDeepLearnProgress] = useState<{
     current: number;
     total: number;
@@ -89,21 +128,209 @@ const DeepLearnResponse: React.FC<DeepLearnResponseProps> = ({ isSplit = false, 
     status: string;
   } | null>(null);
   
-  // Ensure loading state is properly initialized
+  // Initialize loading state and debug on mount
   useEffect(() => {
     console.log('🔧 Ensuring loading state is true on mount');
+    console.log('🚀 DeepLearnResponse component mounted, isInteractiveLoading:', isInteractiveLoading);
     setIsInteractiveLoading(true);
+    // Initialize focused chunk to 0 (first chunk)
+    setFocusedChunkIndex(0);
   }, []);
   
-  // Debug loading state
+  // Debug loading state changes
   useEffect(() => {
     console.log('🔄 Interactive loading state changed:', isInteractiveLoading);
   }, [isInteractiveLoading]);
 
-  // Debug initial render
+  // Viewport focus tracking with IntersectionObserver - IMPROVED VERSION
   useEffect(() => {
-    console.log('🚀 DeepLearnResponse component mounted, isInteractiveLoading:', isInteractiveLoading);
-  }, []);
+    // Use fewer, more meaningful thresholds for cleaner detection
+    const observerOptions = {
+      root: null, // Use viewport as root
+      rootMargin: '0px',
+      threshold: [0.3, 0.5, 0.7, 1.0] // Focus on higher visibility thresholds
+    };
+
+    let updateTimeout: number;
+
+    const handleIntersection = (entries: IntersectionObserverEntry[]) => {
+      // Debounce updates to avoid too frequent changes
+      clearTimeout(updateTimeout);
+      updateTimeout = setTimeout(() => {
+        // Create a map to track visibility data for each chunk  
+        const chunkVisibility = new Map<number, { 
+          maxRatio: number, 
+          totalRatio: number, 
+          count: number,
+          centerDistance: number // Track distance from viewport center
+        }>();
+
+        const viewportHeight = window.innerHeight;
+        const viewportCenter = viewportHeight / 2;
+
+        entries.forEach(entry => {
+          if (entry.isIntersecting) {
+            const element = entry.target as HTMLElement;
+            const chunkIndex = parseInt(element.getAttribute('data-chunk-index') || '0');
+            
+            if (!chunkVisibility.has(chunkIndex)) {
+              chunkVisibility.set(chunkIndex, { 
+                maxRatio: 0, 
+                totalRatio: 0, 
+                count: 0,
+                centerDistance: Infinity
+              });
+            }
+            
+            const chunkData = chunkVisibility.get(chunkIndex)!;
+            chunkData.maxRatio = Math.max(chunkData.maxRatio, entry.intersectionRatio);
+            chunkData.totalRatio += entry.intersectionRatio;
+            chunkData.count += 1;
+            
+            // Calculate distance from viewport center (now for the entire chunk)
+            const rect = element.getBoundingClientRect();
+            const elementCenter = rect.top + rect.height / 2;
+            const distance = Math.abs(elementCenter - viewportCenter);
+            chunkData.centerDistance = Math.min(chunkData.centerDistance, distance);
+          }
+        });
+
+        // Find the chunk with best visibility and center positioning
+        let bestChunkIndex = -1;
+        let bestScore = 0;
+
+        chunkVisibility.forEach((data, chunkIndex) => {
+          // Must have at least 25% visibility to be considered (reduced from 30%)
+          if (data.maxRatio < 0.25) {
+            return;
+          }
+
+          // Calculate center proximity score (closer to center = higher score)
+          const centerScore = Math.max(0, 1 - (data.centerDistance / viewportHeight));
+          
+          // Combined score: 70% visibility + 30% center proximity
+          const score = data.maxRatio * 0.7 + centerScore * 0.3;
+          
+          if (score > bestScore) {
+            bestChunkIndex = chunkIndex;
+            bestScore = score;
+          }
+        });
+
+        // Update focused chunk if it changed and we found a valid chunk
+        if (bestChunkIndex !== -1 && bestChunkIndex !== focusedChunkIndex) {
+          const bestData = chunkVisibility.get(bestChunkIndex);
+          if (bestData) {
+            const centerScore = Math.max(0, 1 - (bestData.centerDistance / viewportHeight));
+            console.log(`👁️ Focus changed to chunk ${bestChunkIndex} (visibility: ${(bestData.maxRatio * 100).toFixed(1)}%, center: ${(centerScore * 100).toFixed(1)}%, score: ${(bestScore * 100).toFixed(1)}%)`);
+            setFocusedChunkIndex(bestChunkIndex);
+          }
+        }
+      }, 100); // Increased debounce for more stability
+    };
+
+    const observer = new IntersectionObserver(handleIntersection, observerOptions);
+
+    // Small delay to ensure DOM is ready
+    const setupObserver = () => {
+      // Observe all chunk containers (which now contain both question and answer)
+      const chunkContainers = document.querySelectorAll('.deep-learn-response-chunk[data-chunk-index]');
+      chunkContainers.forEach(chunk => observer.observe(chunk));
+      
+      console.log(`🔍 Started observing ${chunkContainers.length} chunk containers for focus tracking`);
+      console.log(`📊 Chunk visibility map:`, Array.from(chunkContainers).map(el => ({
+        chunkIndex: el.getAttribute('data-chunk-index'),
+        hasQuestion: !!el.querySelector('.deep-learn-response-question'),
+        hasAnswer: !!el.querySelector('.deep-learn-response-answer'),
+        element: el.className
+      })));
+    };
+
+    // Setup observer with a small delay to ensure DOM is ready
+    const setupTimeout = setTimeout(setupObserver, 100);
+
+    return () => {
+      clearTimeout(updateTimeout);
+      clearTimeout(setupTimeout);
+      observer.disconnect();
+      console.log('🧹 Cleaned up intersection observer');
+    };
+  }, [conversation.length, focusedChunkIndex]); // Re-run when conversation changes
+
+  // Interactive content switching logic based on focused chunk changes
+  useEffect(() => {
+    // Only proceed if we have a valid focused chunk index and conversation data
+    if (focusedChunkIndex < 0) {
+      console.log('⚠️ Invalid focused chunk index, skipping interactive content switch');
+      return;
+    }
+
+    const tabId = `${pageIdx}-${screenId}-${tabIdx}`;
+    const conversationData = deepLearnStorageManager.getConversationData(tabId);
+    
+    if (!conversationData) {
+      console.log('⚠️ No conversation data found, skipping interactive content switch');
+      return;
+    }
+
+    // Find the chunk with the current focused index
+    const focusedChunk = conversationData.chunks.find(chunk => chunk.index === focusedChunkIndex);
+    
+    if (!focusedChunk) {
+      console.log(`⚠️ No chunk found with index ${focusedChunkIndex}, skipping interactive content switch`);
+      return;
+    }
+
+    const targetInteractiveIndex = focusedChunk.point_to_prev_interactive_index;
+    
+    console.log(`🔄 Interactive content switch triggered for focused chunk ${focusedChunkIndex}:`, {
+      search_type: focusedChunk.search_type,
+      point_to_prev_interactive_index: targetInteractiveIndex,
+      currentInteractiveIndex: currentInteractiveIndex,
+      needsSwitch: targetInteractiveIndex !== currentInteractiveIndex
+    });
+
+    // Check if we need to switch interactive content
+    if (targetInteractiveIndex === currentInteractiveIndex) {
+      console.log(`✅ Interactive content already correct (index ${targetInteractiveIndex}) - no switch needed`);
+      return;
+    }
+
+    // Find the chunk that contains the interactive content we need
+    const interactiveChunk = conversationData.chunks.find(chunk => chunk.index === targetInteractiveIndex);
+    
+    if (!interactiveChunk) {
+      console.log(`⚠️ No interactive chunk found with index ${targetInteractiveIndex} - keeping current content`);
+      return;
+    }
+
+    if (!interactiveChunk.interactive) {
+      console.log(`⚠️ Interactive chunk ${targetInteractiveIndex} has no interactive content - keeping current content`);
+      return;
+    }
+
+    console.log(`🎯 Switching to interactive content from chunk ${targetInteractiveIndex}:`, {
+      videoCount: interactiveChunk.interactive.recommended_videos?.length || 0,
+      webpageCount: interactiveChunk.interactive.related_webpages?.length || 0,
+      conceptCount: interactiveChunk.interactive.related_concepts?.length || 0
+    });
+
+    // Convert the stored interactive data to the expected format
+    const interactiveDataToDisplay: InteractiveData = {
+      success: true,
+      conversation_title: interactiveChunk.interactive.conversation_title,
+      topic: '',
+      roadmap_node_index: 0,
+      concept_map: { nodes: [] },
+      interactive_content: interactiveChunk.interactive,
+      files_updated: { conversation_json: '', concept_map_json: '' },
+      timestamp: new Date().toISOString()
+    };
+
+    setInteractiveData(interactiveDataToDisplay);
+    setCurrentInteractiveIndex(targetInteractiveIndex);
+    setIsInteractiveLoading(false);
+  }, [focusedChunkIndex, pageIdx, screenId, tabIdx, currentInteractiveIndex]); // Include currentInteractiveIndex in dependencies
 
   // Load conversation data from localStorage on component mount
   useEffect(() => {
@@ -143,7 +370,8 @@ const DeepLearnResponse: React.FC<DeepLearnResponseProps> = ({ isSplit = false, 
         type: 'question',
         content: query,
         timestamp: new Date().toLocaleString(),
-        mode: mode as 'deep-learn' | 'quick-search'
+        mode: mode as 'deep-learn' | 'quick-search',
+        chunkIndex: 0 // Initial chunk is always 0
       };
       
       setConversation([initialQuestion]);
@@ -163,7 +391,8 @@ const DeepLearnResponse: React.FC<DeepLearnResponseProps> = ({ isSplit = false, 
           content: '',
           timestamp: new Date().toLocaleString(),
           mode: 'quick-search',
-          isStreaming: true
+          isStreaming: true,
+          chunkIndex: 0 // Initial chunk is always 0
         };
         
         setConversation([initialQuestion, streamingAnswer]);
@@ -172,35 +401,11 @@ const DeepLearnResponse: React.FC<DeepLearnResponseProps> = ({ isSplit = false, 
         submitQuickSearchQuery(
           query,
           webSearch,
-          (data: string) => {
-            // Update the streaming content
-            setConversation(prev => prev.map(msg => 
-              msg.id === '2' 
-                ? { ...msg, content: msg.content + data }
-                : msg
-            ));
-          },
-          (error: string) => {
-            console.error('Quick search error:', error);
-            setIsLoading(false);
-            // Update the message to show error
-            setConversation(prev => prev.map(msg => 
-              msg.id === '2' 
-                ? { ...msg, content: `Error: ${error}`, isStreaming: false }
-                : msg
-            ));
-          },
+          (data: string) => appendToStreamingMessage('2', data),
+          (error: string) => handleApiError('2', error),
           () => {
             console.log('Quick search completed');
-            setIsLoading(false);
-            // Mark streaming as complete and save to storage
-            setConversation(prev => prev.map(msg => 
-              msg.id === '2' 
-                ? { ...msg, isStreaming: false }
-                : msg
-            ));
-            
-            // Chunk was already created at query start
+            completeStreaming('2');
             console.log(`✅ Initial query completed for chunk 0`);
           },
           undefined, // additionalComments
@@ -220,7 +425,8 @@ const DeepLearnResponse: React.FC<DeepLearnResponseProps> = ({ isSplit = false, 
           content: '',
           timestamp: new Date().toLocaleString(),
           mode: 'deep-learn',
-          isStreaming: true
+          isStreaming: true,
+          chunkIndex: 0 // Initial chunk is always 0
         };
         
         setConversation([initialQuestion, streamingAnswer]);
@@ -242,34 +448,13 @@ const DeepLearnResponse: React.FC<DeepLearnResponseProps> = ({ isSplit = false, 
             
             // Update the streaming content with the LLM response
             if (data.llm_response) {
-              setConversation(prev => prev.map(msg => 
-                msg.id === '2' 
-                  ? { ...msg, content: data.llm_response }
-                  : msg
-              ));
+              updateConversationMessage('2', data.llm_response);
             }
           },
-          (error: string) => {
-            console.error('Deep learn error:', error);
-            setIsLoading(false);
-            // Update the message to show error
-            setConversation(prev => prev.map(msg => 
-              msg.id === '2' 
-                ? { ...msg, content: `Error: ${error}`, isStreaming: false }
-                : msg
-            ));
-          },
+          (error: string) => handleApiError('2', error),
           () => {
             console.log('Deep learn completed');
-            setIsLoading(false);
-            // Mark streaming as complete and save to storage
-            setConversation(prev => prev.map(msg => 
-              msg.id === '2' 
-                ? { ...msg, isStreaming: false }
-                : msg
-            ));
-            
-            // Chunk was already created at query start
+            completeStreaming('2');
             console.log(`✅ Initial query completed for chunk 0`);
           },
           undefined, // additionalComments
@@ -337,6 +522,7 @@ const DeepLearnResponse: React.FC<DeepLearnResponseProps> = ({ isSplit = false, 
       }
       
       setInteractiveData(data);
+      setCurrentInteractiveIndex(currentChunkIndex); // Set the current interactive index to the chunk that just received the data
       
       // Only stop loading if we have actual content
       if (data?.interactive_content?.recommended_videos?.length > 0 || 
@@ -427,7 +613,8 @@ const DeepLearnResponse: React.FC<DeepLearnResponseProps> = ({ isSplit = false, 
       type: 'question',
       content: query,
       timestamp: new Date().toLocaleString(),
-      mode: displayMode
+      mode: displayMode,
+      chunkIndex: newChunkIndex // Use the new chunk index
     };
 
     // Add streaming answer message
@@ -437,7 +624,8 @@ const DeepLearnResponse: React.FC<DeepLearnResponseProps> = ({ isSplit = false, 
       content: '',
       timestamp: new Date().toLocaleString(),
       mode: displayMode,
-      isStreaming: true
+      isStreaming: true,
+      chunkIndex: newChunkIndex // Use the new chunk index
     };
 
     setConversation(prev => [...prev, newQuestion, streamingAnswer]);
@@ -470,6 +658,7 @@ const DeepLearnResponse: React.FC<DeepLearnResponseProps> = ({ isSplit = false, 
             files_updated: { conversation_json: '', concept_map_json: '' },
             timestamp: new Date().toISOString()
           });
+          setCurrentInteractiveIndex(lastNewTopicChunk.index); // Set the current interactive index to the chunk we loaded from
           console.log(`🎯 Loaded interactive content for followup from last new_topic chunk ${lastNewTopicChunk.index}`);
         }
       }
@@ -488,37 +677,13 @@ const DeepLearnResponse: React.FC<DeepLearnResponseProps> = ({ isSplit = false, 
         await submitFollowUpQuery(
           query,
           webSearchEnabled,
-          (data: string) => {
-            // Update the streaming content
-            setConversation(prev => prev.map(msg => 
-              msg.id === streamingAnswer.id 
-                ? { ...msg, content: msg.content + data }
-                : msg
-            ));
-          },
-          (error: string) => {
-            console.error('Follow-up search error:', error);
-            setIsLoading(false);
-            setIsInteractiveLoading(false);
-            // Update the message to show error
-            setConversation(prev => prev.map(msg => 
-              msg.id === streamingAnswer.id 
-                ? { ...msg, content: `Error: ${error}`, isStreaming: false }
-                : msg
-            ));
-          },
+          (data: string) => appendToStreamingMessage(streamingAnswer.id, data),
+          (error: string) => handleApiError(streamingAnswer.id, error),
           () => {
             console.log('Follow-up search completed');
             console.log(`🔍 Checking if followup chunk should be created - chunkCreated: ${chunkCreated}`);
-            setIsLoading(false);
+            completeStreaming(streamingAnswer.id);
             setIsInteractiveLoading(false);
-            
-            // Mark streaming as complete and save to storage
-            setConversation(prev => prev.map(msg => 
-              msg.id === streamingAnswer.id 
-                ? { ...msg, isStreaming: false }
-                : msg
-            ));
             
             // Save chunk to storage manager (only the required fields) - outside of setConversation
             // Use a more reliable check - if this chunk index doesn't exist yet, create it
@@ -564,35 +729,12 @@ const DeepLearnResponse: React.FC<DeepLearnResponseProps> = ({ isSplit = false, 
             (data: DeepLearnStreamingData) => {
               // Update the streaming content - use llm_response for actual content
               const contentToAdd = data.llm_response || data.stream_info || '';
-              setConversation(prev => prev.map(msg => 
-                msg.id === streamingAnswer.id 
-                  ? { ...msg, content: contentToAdd }
-                  : msg
-              ));
+              updateConversationMessage(streamingAnswer.id, contentToAdd);
             },
-            (error: string) => {
-              console.error('Deep learn search error:', error);
-              setIsLoading(false);
-              setIsInteractiveLoading(false);
-              // Update the message to show error
-              setConversation(prev => prev.map(msg => 
-                msg.id === streamingAnswer.id 
-                  ? { ...msg, content: `Error: ${error}`, isStreaming: false }
-                  : msg
-              ));
-            },
+            (error: string) => handleApiError(streamingAnswer.id, error),
             () => {
               console.log('Deep learn search completed');
-              setIsLoading(false);
-              
-              // Mark streaming as complete
-              setConversation(prev => prev.map(msg => 
-                msg.id === streamingAnswer.id 
-                  ? { ...msg, isStreaming: false }
-                  : msg
-              ));
-              
-              // Chunk was already created at query start
+              completeStreaming(streamingAnswer.id);
               console.log(`✅ New topic query completed for chunk ${newChunkIndex}`)
             },
             undefined, // additionalComments
@@ -609,37 +751,11 @@ const DeepLearnResponse: React.FC<DeepLearnResponseProps> = ({ isSplit = false, 
           await submitQuickSearchQuery(
             query,
             webSearchEnabled,
-            (data: string) => {
-              // Update the streaming content
-              setConversation(prev => prev.map(msg => 
-                msg.id === streamingAnswer.id 
-                  ? { ...msg, content: msg.content + data }
-                  : msg
-              ));
-            },
-            (error: string) => {
-              console.error('Quick search error:', error);
-              setIsLoading(false);
-              setIsInteractiveLoading(false);
-              // Update the message to show error
-              setConversation(prev => prev.map(msg => 
-                msg.id === streamingAnswer.id 
-                  ? { ...msg, content: `Error: ${error}`, isStreaming: false }
-                  : msg
-              ));
-            },
+            (data: string) => appendToStreamingMessage(streamingAnswer.id, data),
+            (error: string) => handleApiError(streamingAnswer.id, error),
             () => {
               console.log('Quick search completed');
-              setIsLoading(false);
-              
-              // Mark streaming as complete
-              setConversation(prev => prev.map(msg => 
-                msg.id === streamingAnswer.id 
-                  ? { ...msg, isStreaming: false }
-                  : msg
-              ));
-              
-              // Chunk was already created at query start
+              completeStreaming(streamingAnswer.id);
               console.log(`✅ New topic query completed for chunk ${newChunkIndex}`)
             },
             undefined, // additionalComments
@@ -674,7 +790,10 @@ const DeepLearnResponse: React.FC<DeepLearnResponseProps> = ({ isSplit = false, 
   const renderConversationGroup = (message: ConversationMessage, index: number) => {
     if (message.type === 'question') {
       return (
-        <div key={message.id} className="deep-learn-response-conversation-group">
+        <div 
+          key={message.id} 
+          className="deep-learn-response-conversation-group"
+        >
           {/* Question Part */}
           <div className="deep-learn-response-question">
             <span className="deep-learn-response-question-date">
@@ -690,7 +809,10 @@ const DeepLearnResponse: React.FC<DeepLearnResponseProps> = ({ isSplit = false, 
       );
     } else if (message.type === 'answer') {
       return (
-        <div key={message.id} className="deep-learn-response-conversation-group">
+        <div 
+          key={message.id} 
+          className="deep-learn-response-conversation-group"
+        >
           {/* Answer Part */}
           <div className={`deep-learn-response-answer ${message.mode === 'quick-search' ? 'response-quick-search' : ''}`}>
             {/* Title Section */}
@@ -829,6 +951,97 @@ const DeepLearnResponse: React.FC<DeepLearnResponseProps> = ({ isSplit = false, 
 
   return (
     <div className="deep-learn-response">
+      {/* Debug Panel - Remove this in production */}
+      <div style={{
+        position: 'fixed',
+        top: '10px',
+        right: '10px',
+        backgroundColor: '#f0f0f0',
+        border: '1px solid #ccc',
+        padding: '10px',
+        borderRadius: '5px',
+        fontSize: '12px',
+        zIndex: 1000,
+        maxWidth: '300px'
+      }}>
+        <strong>🔍 Debug Info:</strong><br/>
+        Creation Chunk Index: <strong>{currentChunkIndex}</strong><br/>
+        <strong>👁️ Focused Chunk Index: <span style={{color: 'red'}}>{focusedChunkIndex}</span></strong><br/>
+        <strong>🎯 Current Interactive Index: <span style={{color: 'blue'}}>{currentInteractiveIndex}</span></strong><br/>
+        Conversation ID: <strong>{currentConversationId.slice(-8)}</strong><br/>
+        Tab ID: <strong>{`${pageIdx}-${screenId}-${tabIdx}`}</strong><br/>
+        Total Chunks: <strong>{deepLearnStorageManager.getChunkCount(`${pageIdx}-${screenId}-${tabIdx}`)}</strong><br/>
+        Interactive Loading: <strong>{isInteractiveLoading ? 'Yes' : 'No'}</strong><br/>
+        <button 
+          onClick={() => deepLearnStorageManager.debugLogStorage(`${pageIdx}-${screenId}-${tabIdx}`)}
+          style={{fontSize: '10px', marginTop: '5px', padding: '2px 6px', marginRight: '5px'}}
+        >
+          🔍 Log Storage State
+        </button>
+        <button 
+          onClick={() => {
+            const groups = document.querySelectorAll('[data-chunk-index]');
+            console.log('🔍 DOM Focus Debug:', Array.from(groups).map(el => ({
+              chunkIndex: el.getAttribute('data-chunk-index'),
+              type: el.querySelector('.deep-learn-response-question') ? 'question' : 'answer',
+              isVisible: el.getBoundingClientRect().top < window.innerHeight && el.getBoundingClientRect().bottom > 0,
+              rect: el.getBoundingClientRect()
+            })));
+          }}
+          style={{fontSize: '10px', marginTop: '5px', padding: '2px 6px', marginRight: '5px'}}
+        >
+          🔍 Log Focus Debug
+        </button>
+        <button 
+          onClick={() => {
+            const tabId = `${pageIdx}-${screenId}-${tabIdx}`;
+            const conversationData = deepLearnStorageManager.getConversationData(tabId);
+            const focusedChunk = conversationData?.chunks.find(chunk => chunk.index === focusedChunkIndex);
+            console.log('🔄 Manual Interactive Switch Test:', {
+              currentFocusedChunk: focusedChunkIndex,
+              currentInteractiveIndex: currentInteractiveIndex,
+              focusedChunk: focusedChunk,
+              targetInteractiveIndex: focusedChunk?.point_to_prev_interactive_index,
+              needsSwitch: focusedChunk?.point_to_prev_interactive_index !== currentInteractiveIndex,
+              conversationData: conversationData
+            });
+          }}
+          style={{fontSize: '10px', marginTop: '5px', padding: '2px 6px', marginRight: '5px'}}
+        >
+          🔄 Test Switch
+        </button>
+        <button 
+          onClick={() => {
+            const chunks = document.querySelectorAll('.deep-learn-response-chunk[data-chunk-index]');
+            const viewportHeight = window.innerHeight;
+            const viewportCenter = viewportHeight / 2;
+            
+            console.log('🔍 Focus Detection Debug:', Array.from(chunks).map(el => {
+              const rect = el.getBoundingClientRect();
+              const elementCenter = rect.top + rect.height / 2;
+              const distance = Math.abs(elementCenter - viewportCenter);
+              const centerScore = Math.max(0, 1 - (distance / viewportHeight));
+              const visibility = Math.min(1, Math.max(0, 
+                (Math.min(rect.bottom, viewportHeight) - Math.max(rect.top, 0)) / rect.height
+              ));
+              
+              return {
+                chunkIndex: el.getAttribute('data-chunk-index'),
+                hasQuestion: !!el.querySelector('.deep-learn-response-question'),
+                hasAnswer: !!el.querySelector('.deep-learn-response-answer'),
+                visibility: `${(visibility * 100).toFixed(1)}%`,
+                centerDistance: `${distance.toFixed(0)}px`,
+                centerScore: `${(centerScore * 100).toFixed(1)}%`,
+                rect: { top: rect.top, bottom: rect.bottom, height: rect.height }
+              };
+            }));
+          }}
+          style={{fontSize: '10px', marginTop: '5px', padding: '2px 6px'}}
+        >
+          🔍 Focus Debug
+        </button>
+      </div>
+      
       {/* Header Section */}
       <header className="deep-learn-response-header">
         {/* Left-aligned elements */}
@@ -918,7 +1131,27 @@ const DeepLearnResponse: React.FC<DeepLearnResponseProps> = ({ isSplit = false, 
               {/* Conversation Groups */}
               <div className="deep-learn-response-conversation-groups">
                 {conversation.length > 0 ? (
-                  conversation.map((message, index) => renderConversationGroup(message, index))
+                  // Group messages by chunk index to create proper chunks
+                  (() => {
+                    const chunks = new Map<number, ConversationMessage[]>();
+                    conversation.forEach(message => {
+                      const chunkIndex = message.chunkIndex || 0;
+                      if (!chunks.has(chunkIndex)) {
+                        chunks.set(chunkIndex, []);
+                      }
+                      chunks.get(chunkIndex)!.push(message);
+                    });
+                    
+                    return Array.from(chunks.entries()).map(([chunkIndex, messages]) => (
+                      <div 
+                        key={`chunk-${chunkIndex}`}
+                        className="deep-learn-response-chunk"
+                        data-chunk-index={chunkIndex}
+                      >
+                        {messages.map((message, index) => renderConversationGroup(message, index))}
+                      </div>
+                    ));
+                  })()
                 ) : (
                   <div className="deep-learn-response-conversation-group">
                     <div className="deep-learn-response-question">
