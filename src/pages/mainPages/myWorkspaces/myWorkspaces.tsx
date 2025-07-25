@@ -11,6 +11,7 @@ import { Card } from '../../../components/mainPages/myWorkspaces/card';
 import ProjectDirectory from '../../../components/mainPages/myWorkspaces/projectDirectory';
 import { ShiftingDropDown } from '../../../components/mainPages/myWorkspaces/shiftingDropdown';
 import CreateWorkspaceModal from '../../../components/mainPages/myWorkspaces/createWorkspaceModal/createWorkspaceModal';
+import ProfileManagementModal from '../../../components/mainPages/myWorkspaces/ProfileManagementModal';
 import { ToastContainer } from '../../../components/ui/ToastContainer';
 import { useToast } from '../../../hooks/useToast';
 import { getAllWorkspaces } from '../../../api/mainPages/workspaces';
@@ -35,6 +36,7 @@ function MyWorkspaces() {
   ];
 
   const [isModalOpen, setIsModalOpen] = useState(false);
+  const [isProfileManagementModalOpen, setIsProfileManagementModalOpen] = useState(false);
   const tabsRef = useRef<(HTMLElement | null)[]>([]);
   const [activeTabIndex, setActiveTabIndex] = useState<number | null>(0);
   const [tabUnderlineWidth, setTabUnderlineWidth] = useState(0);
@@ -168,6 +170,22 @@ function MyWorkspaces() {
               })}
             </div>
             <div className="flex items-center gap-2">
+              <Button
+                variant="outline"
+                className="h-[29px] min-w-[113px] max-w-[200px] bg-white border-[#949494] rounded-lg flex items-center justify-between px-2 hover:bg-gray-50"
+                onClick={() => setIsProfileManagementModalOpen(true)}
+              >
+                <div className="flex items-center gap-2">
+                  <img 
+                    src="/workspace/deepLearn/contacts-line.svg" 
+                    alt="Profile" 
+                    className="w-4 h-4"
+                    style={{ filter: 'brightness(0) saturate(100%) invert(39%) sepia(0%) saturate(0%) hue-rotate(147deg) brightness(94%) contrast(87%)' }}
+                  />
+                  <span className="text-sm text-gray-600 truncate">Profile Manager</span>
+                </div>
+              </Button>
+
               <DropdownMenu>
                 <DropdownMenuTrigger asChild>
                   <Button
@@ -255,6 +273,11 @@ function MyWorkspaces() {
         isOpen={isModalOpen}
         onClose={() => setIsModalOpen(false)}
         onSubmit={handleCreateWorkspace}
+      />
+
+      <ProfileManagementModal
+        isOpen={isProfileManagementModalOpen}
+        onClose={() => setIsProfileManagementModalOpen(false)}
       />
     </div>
   );
