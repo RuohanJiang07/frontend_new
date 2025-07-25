@@ -98,6 +98,7 @@ export interface ConversationHistoryItem {
       title: string;
       url: string;
       thumbnail: string;
+      channel?: string;
     }>;
     related_webpages: Array<{
       title: string;
@@ -119,6 +120,13 @@ export interface GetHistoryConversationResponse {
   cache_source: string;
   cache_path: string;
   conversation_json: ConversationHistoryItem[];
+  concept_map_json?: {
+    nodes: Array<{
+      id: number;
+      label: string;
+      neighbors: number[];
+    }>;
+  };
   message: string;
   timestamp: string;
 }

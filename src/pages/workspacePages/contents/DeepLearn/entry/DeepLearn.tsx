@@ -4,6 +4,7 @@ import './DeepLearn.css';
 import { useEffect } from 'react';
 import { useTabContext } from '../../../workspaceFrame/TabContext';
 import { submitQuickSearchQuery } from '../../../../../api/workspaces/deep_learn/deepLearn_quicksearch';
+import { getDeepLearningHistory, DeepLearningConversation } from '../../../../../api/workspaces/deep_learn/getHistory';
 
 // Helper function to generate UUID
 const generateUUID = (): string => {
@@ -41,7 +42,8 @@ function DeepLearn({ isSplit = false, onBack, onViewChange, tabIdx = 0, pageIdx 
   const [profileSelected, setProfileSelected] = useState(false);
   const [referenceSelected, setReferenceSelected] = useState(false);
   const [trendingTopics, setTrendingTopics] = useState<TrendingTopic[]>([]);
-  const [historyItems, setHistoryItems] = useState<any[]>([]);
+  const [historyItems, setHistoryItems] = useState<DeepLearningConversation[]>([]);
+  const [loadingHistory, setLoadingHistory] = useState(true);
   const [isSubmitting, setIsSubmitting] = useState(false);
 
   // Load trending topics on component mount
@@ -99,64 +101,60 @@ function DeepLearn({ isSplit = false, onBack, onViewChange, tabIdx = 0, pageIdx 
       },
       {
         id: '8',
-        title: 'Renewable Energy: Solar Power Revolution',
-        imageUrl: 'https://images.pexels.com/photos/8961065/pexels-photo-8961065.jpeg?auto=compress&cs=tinysrgb&w=1260&h=750&dpr=2',
-        author: 'Green Energy',
+        title: 'Renewable Energy: Solar and Wind Power Technologies',
+        imageUrl: 'https://images.pexels.com/photos/38136/pexels-photo-38136.jpeg?auto=compress&cs=tinysrgb&w=1260&h=750&dpr=2',
+        author: 'Energy Review',
         heat: 521
-      },
-      {
-        id: '9',
-        title: 'Space Exploration: Mars Mission Technologies',
-        imageUrl: 'https://images.pexels.com/photos/2150/sky-space-dark-galaxy.jpg?auto=compress&cs=tinysrgb&w=1260&h=750&dpr=2',
-        author: 'Space Tech',
-        heat: 478
       }
     ];
-    
     setTrendingTopics(mockTrendingTopics);
-
-    // Mock history items
-    const mockHistoryItems = [
-      {
-        id: '1',
-        title: 'Machine Learning Fundamentals',
-        date: '2024-01-15',
-        query: 'What are the basics of machine learning?'
-      },
-      {
-        id: '2',
-        title: 'Quantum Computing Explained',
-        date: '2024-01-10',
-        query: 'How does quantum computing work?'
-      },
-      {
-        id: '3',
-        title: 'Blockchain Technology',
-        date: '2024-01-05',
-        query: 'What is blockchain and how does it work?'
-      },
-      {
-        id: '4',
-        title: 'Artificial Intelligence Ethics',
-        date: '2024-01-03',
-        query: 'What are the ethical considerations in AI development?'
-      },
-      {
-        id: '5',
-        title: 'Climate Change Solutions',
-        date: '2023-12-28',
-        query: 'What are the most effective solutions to climate change?'
-      },
-      {
-        id: '6',
-        title: 'Space Travel Technologies',
-        date: '2023-12-25',
-        query: 'How do modern space travel technologies work?'
-      }
-    ];
-    
-    setHistoryItems(mockHistoryItems);
   }, []);
+
+  // Load history data when component mounts
+  useEffect(() => {
+    loadHistoryData();
+  }, []);
+
+  const loadHistoryData = async () => {
+    try {
+      setLoadingHistory(true);
+      const response = await getDeepLearningHistory();
+      
+      if (response.success) {
+        // Create a copy of the items array to avoid mutating the original
+        const itemsCopy = [...response.deep_learning_conversations.items];
+        
+        // Sort conversations by creation date (latest first)
+        const sortedItems = itemsCopy.sort((a, b) => {
+          const dateA = new Date(a.created_at);
+          const dateB = new Date(b.created_at);
+          return dateB.getTime() - dateA.getTime();
+        });
+        
+        setHistoryItems(sortedItems);
+        console.log('📂 Loaded deep learning history:', sortedItems.length, 'conversations');
+      } else {
+        console.warn('Failed to load deep learning history');
+      }
+    } catch (err) {
+      console.error('Error loading deep learning history:', err);
+      // Don't show error to user, just use empty state
+    } finally {
+      setLoadingHistory(false);
+    }
+  };
+
+  // Helper function to format date
+  const formatDate = (dateString: string): string => {
+    const date = new Date(dateString);
+    return date.toLocaleDateString('en-US', {
+      year: 'numeric',
+      month: 'short',
+      day: 'numeric',
+      hour: '2-digit',
+      minute: '2-digit'
+    });
+  };
 
   const toggleMode = (mode: 'deep-learn' | 'quick-search') => {
     setSelectedMode(mode);
@@ -187,6 +185,11 @@ function DeepLearn({ isSplit = false, onBack, onViewChange, tabIdx = 0, pageIdx 
         // Generate conversation ID for both modes
         const conversationId = `dl-c-${generateUUID()}`;
         
+        // Clear any history flags to ensure this is treated as a new conversation
+        const tabId = `${pageIdx}-${screenId}-${tabIdx}`;
+        localStorage.removeItem(`deeplearn_history_loaded_${tabId}`);
+        localStorage.removeItem(`deeplearn_conversation_${tabId}`);
+        
         // Store the conversation ID for the response page
         localStorage.setItem('current_deeplearn_conversation_id', conversationId);
         localStorage.setItem('current_deeplearn_query', inputValue);
@@ -203,7 +206,24 @@ function DeepLearn({ isSplit = false, onBack, onViewChange, tabIdx = 0, pageIdx 
   };
 
   // Handle history item click
-  const handleHistoryItemClick = (historyItem: any) => {
+  const handleHistoryItemClick = (historyItem: DeepLearningConversation) => {
+    // Generate a unique tab ID for this specific tab instance
+    const tabId = `${pageIdx}-${screenId}-${tabIdx}`;
+    
+    // Store the conversation ID for loading the full conversation
+    localStorage.setItem(`deeplearn_conversation_${tabId}`, historyItem.conversation_id);
+    
+    // Mark this as a history conversation that needs to be loaded
+    localStorage.setItem(`deeplearn_history_loaded_${tabId}`, 'true');
+    
+    // Clear any existing data
+    localStorage.removeItem(`deeplearn_history_data_${tabId}`);
+    localStorage.removeItem(`deeplearn_streaming_content_${tabId}`);
+    localStorage.removeItem(`deeplearn_streaming_complete_${tabId}`);
+    localStorage.removeItem(`deeplearn_query_${tabId}`);
+    localStorage.removeItem(`deeplearn_profile_${tabId}`);
+    
+    // Navigate to the response page
     switchToDeepLearnResponse(pageIdx, screenId, tabIdx);
   };
 
@@ -213,6 +233,11 @@ function DeepLearn({ isSplit = false, onBack, onViewChange, tabIdx = 0, pageIdx 
     
     // Generate conversation ID for both modes
     const conversationId = `dl-c-${generateUUID()}`;
+    
+    // Clear any history flags to ensure this is treated as a new conversation
+    const tabId = `${pageIdx}-${screenId}-${tabIdx}`;
+    localStorage.removeItem(`deeplearn_history_loaded_${tabId}`);
+    localStorage.removeItem(`deeplearn_conversation_${tabId}`);
     
     // Store the conversation ID for the response page
     localStorage.setItem('current_deeplearn_conversation_id', conversationId);
@@ -430,24 +455,36 @@ function DeepLearn({ isSplit = false, onBack, onViewChange, tabIdx = 0, pageIdx 
               </div>
             </div>
             <div className="deep-learn-history-content" data-testid="history-content">
-              <div className="history-items">
-                {historyItems.map((item) => (
-                  <div key={item.id} className="history-item" onClick={() => handleHistoryItemClick(item)}>
-                    <div className="history-item-content">
-                      <div className="history-item-title">{item.title}</div>
-                      <div className="history-item-query">{item.query}</div>
-                      <div className="history-item-date">{item.date}</div>
+              {loadingHistory ? (
+                <div className="history-loading">
+                  <div className="history-loading-spinner"></div>
+                  <span className="history-loading-text">Loading history...</span>
+                </div>
+              ) : historyItems.length > 0 ? (
+                <div className="history-items">
+                  {historyItems.map((item) => (
+                    <div key={item.conversation_id} className="history-item" onClick={() => handleHistoryItemClick(item)}>
+                      <div className="history-item-content">
+                        <div className="history-item-title">{item.title}</div>
+                        <div className="history-item-date">{formatDate(item.created_at)}</div>
+                      </div>
+                      <div className="history-item-arrow">
+                        <img 
+                          src="/workspace/deepLearn/arrow-right.svg" 
+                          alt="View" 
+                          className="history-item-arrow-icon"
+                        />
+                      </div>
                     </div>
-                    <div className="history-item-arrow">
-                      <img 
-                        src="/workspace/deepLearn/arrow-right.svg" 
-                        alt="View" 
-                        className="history-item-arrow-icon"
-                      />
-                    </div>
-                  </div>
-                ))}
-              </div>
+                  ))}
+                </div>
+              ) : (
+                <div className="history-empty">
+                  <div className="history-empty-icon">📚</div>
+                  <div className="history-empty-text">No conversations yet</div>
+                  <div className="history-empty-subtext">Start your first deep learning conversation above</div>
+                </div>
+              )}
             </div>
         </div>
       </div>

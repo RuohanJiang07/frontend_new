@@ -3,6 +3,7 @@ import { useTabContext } from '../../../workspaceFrame/TabContext';
 import { submitQuickSearchQuery } from '../../../../../api/workspaces/deep_learn/deepLearn_quicksearch';
 import { submitDeepLearnDeepQuery, DeepLearnStreamingData } from '../../../../../api/workspaces/deep_learn/deepLearn_deeplearn';
 import { submitFollowUpQuery } from '../../../../../api/workspaces/deep_learn/deepLearn_followup';
+import { getHistoryConversation, ConversationHistoryItem } from '../../../../../api/workspaces/deep_learn/getHistory';
 import { MarkdownRenderer } from '../../../../../components/ui/markdown';
 import { deepLearnStorageManager } from './deepLearnStorageManager';
 import './DeepLearnResponse.css';
@@ -124,6 +125,8 @@ const DeepLearnResponse: React.FC<DeepLearnResponseProps> = ({ isSplit = false, 
   const [chunkCreated, setChunkCreated] = useState<boolean>(false); // Prevent duplicate chunk creation
   const [currentInteractiveIndex, setCurrentInteractiveIndex] = useState<number>(-1); // Track which interactive content index is currently displayed
   const [currentRoadmapNodeIndex, setCurrentRoadmapNodeIndex] = useState<number>(-1); // Track which roadmap node should be highlighted
+  const [isHistoryConversation, setIsHistoryConversation] = useState(false); // Track if this is a history conversation
+  const [loadedHistoryData, setLoadedHistoryData] = useState<ConversationHistoryItem[] | null>(null); // Store loaded history data
   const [deepLearnProgress, setDeepLearnProgress] = useState<{
     current: number;
     total: number;
@@ -514,6 +517,143 @@ const DeepLearnResponse: React.FC<DeepLearnResponseProps> = ({ isSplit = false, 
 
   // Load conversation data from localStorage on component mount
   useEffect(() => {
+    const tabId = `${pageIdx}-${screenId}-${tabIdx}`;
+    const isHistoryLoaded = localStorage.getItem(`deeplearn_history_loaded_${tabId}`) === 'true';
+    const savedConversationId = localStorage.getItem(`deeplearn_conversation_${tabId}`);
+    
+    console.log('🔍 Loading conversation data for tab:', tabId);
+
+    // Check if this is a loaded history conversation
+    if (isHistoryLoaded && savedConversationId) {
+      // Additional safety check: ensure the conversation ID is a valid history conversation format
+      // History conversation IDs should be in the format: dl-c-{uuid}
+      if (!savedConversationId.startsWith('dl-c-')) {
+        console.warn('⚠️ Invalid history conversation ID format:', savedConversationId);
+        localStorage.removeItem(`deeplearn_history_loaded_${tabId}`);
+        localStorage.removeItem(`deeplearn_conversation_${tabId}`);
+      } else {
+        console.log('📂 Loading history conversation data for tab:', tabId);
+        
+        // Load the full conversation from the API
+        const loadHistoryConversation = async () => {
+          try {
+            const response = await getHistoryConversation(savedConversationId);
+            
+            if (response.success && response.conversation_json) {
+              setLoadedHistoryData(response.conversation_json);
+              setIsHistoryConversation(true);
+              setCurrentConversationId(savedConversationId);
+              console.log('🆔 Set conversation ID from history:', savedConversationId);
+              
+              // Initialize storage manager tracking
+              deepLearnStorageManager.clearConversationData(tabId);
+              deepLearnStorageManager.initializeConversation(tabId, savedConversationId);
+              
+              // Load conversation data into storage manager
+              response.conversation_json.forEach((item: ConversationHistoryItem) => {
+                // Add chunk to storage manager
+                const chunk = deepLearnStorageManager.addConversationChunk(
+                  tabId, 
+                  item.search_type as 'new_topic' | 'followup',
+                  {
+                    roadmap_node_index: item.roadmap_node_index,
+                    interactive_content: item.interactive
+                  }
+                );
+                
+                console.log(`💾 Loaded history chunk ${item.index}:`, {
+                  search_type: item.search_type,
+                  roadmap_node_index: item.roadmap_node_index,
+                  hasInteractive: !!item.interactive
+                });
+              });
+              
+              // Convert history data to conversation messages
+              const messages: ConversationMessage[] = [];
+              
+              response.conversation_json.forEach((item: ConversationHistoryItem, index) => {
+                // Add question message
+                messages.push({
+                  id: `history-question-${index}`,
+                  type: 'question',
+                  content: item.user_query,
+                  timestamp: new Date(item.time).toLocaleString(),
+                  mode: item.question_type === 'quicksearch' ? 'quick-search' : 'deep-learn',
+                  chunkIndex: item.index
+                });
+                
+                // Add answer message if response exists
+                if (item.llm_response) {
+                  messages.push({
+                    id: `history-answer-${index}`,
+                    type: 'answer',
+                    content: item.llm_response,
+                    timestamp: new Date(item.time).toLocaleString(),
+                    mode: item.question_type === 'quicksearch' ? 'quick-search' : 'deep-learn',
+                    chunkIndex: item.index
+                  });
+                }
+              });
+              
+              setConversation(messages);
+              
+              // Set current chunk index to continue from where history left off
+              const chunkCount = deepLearnStorageManager.getChunkCount(tabId);
+              setCurrentChunkIndex(chunkCount);
+              
+              // Load concept map from history data
+              if (response.concept_map_json && response.concept_map_json.nodes) {
+                setSavedRoadmap(response.concept_map_json);
+                console.log('🗺️ Loaded concept map from history:', response.concept_map_json);
+              }
+              
+              // Set initial interactive data from the first chunk with interactive content
+              const firstInteractiveChunk = response.conversation_json.find(item => item.interactive);
+              if (firstInteractiveChunk && firstInteractiveChunk.interactive) {
+                const interactiveDataToDisplay: InteractiveData = {
+                  success: true,
+                  conversation_title: firstInteractiveChunk.interactive.conversation_title,
+                  topic: '',
+                  roadmap_node_index: firstInteractiveChunk.roadmap_node_index,
+                  concept_map: response.concept_map_json || { nodes: [] },
+                  interactive_content: {
+                    conversation_title: firstInteractiveChunk.interactive.conversation_title,
+                    recommended_videos: firstInteractiveChunk.interactive.recommended_videos.map(video => ({
+                      ...video,
+                      channel: video.channel || 'Unknown'
+                    })),
+                    related_webpages: firstInteractiveChunk.interactive.related_webpages,
+                    related_concepts: firstInteractiveChunk.interactive.related_concepts
+                  },
+                  files_updated: { conversation_json: '', concept_map_json: '' },
+                  timestamp: new Date().toISOString()
+                };
+                
+                setInteractiveData(interactiveDataToDisplay);
+                setCurrentInteractiveIndex(firstInteractiveChunk.index);
+                setCurrentRoadmapNodeIndex(firstInteractiveChunk.roadmap_node_index);
+                setIsInteractiveLoading(false);
+              }
+              
+              console.log('✅ Loaded history conversation with', messages.length, 'messages');
+            } else {
+              console.error('Failed to load history conversation:', response.message);
+              // Clear the history flags and fall through to normal loading
+              localStorage.removeItem(`deeplearn_history_loaded_${tabId}`);
+            }
+          } catch (error) {
+            console.error('❌ Error loading history conversation:', error);
+            // Clear the history flags and fall through to normal loading
+            localStorage.removeItem(`deeplearn_history_loaded_${tabId}`);
+          }
+        };
+        
+        loadHistoryConversation();
+        return; // Exit early for history conversations
+      }
+    }
+
+    // For new conversations, load data from localStorage
     const conversationId = localStorage.getItem('current_deeplearn_conversation_id');
     const query = localStorage.getItem('current_deeplearn_query');
     const mode = localStorage.getItem('current_deeplearn_mode');
