@@ -1120,7 +1120,11 @@ const DeepLearnResponse: React.FC<DeepLearnResponseProps> = ({ isSplit = false, 
             const isCurrentNode = node.id === currentRoadmapNodeIndex;
             
             return (
-              <g key={`node-${node.id}`}>
+              <g 
+                key={`node-${node.id}`}
+                onClick={() => handleConceptMapNodeClick(node.id)}
+                style={{ cursor: 'pointer' }}
+              >
                 {/* Node circle */}
                 <circle
                   cx={node.x}
@@ -1145,6 +1149,7 @@ const DeepLearnResponse: React.FC<DeepLearnResponseProps> = ({ isSplit = false, 
                    fill={isCurrentNode ? '#4C6694' : '#666'}
                    fontWeight={isCurrentNode ? '600' : '400'}
                    className="concept-map-node-text"
+                   style={{ cursor: 'pointer' }}
                  >
                    {node.label.length > 8 ? node.label.substring(0, 8) + '...' : node.label}
                  </text>
@@ -1364,6 +1369,46 @@ const DeepLearnResponse: React.FC<DeepLearnResponseProps> = ({ isSplit = false, 
     }
     
     return null;
+  };
+
+  // Function to handle concept map node clicks
+  const handleConceptMapNodeClick = (nodeId: number) => {
+    console.log(`🗺️ Concept map node ${nodeId} clicked`);
+    
+    const tabId = `${pageIdx}-${screenId}-${tabIdx}`;
+    const conversationData = deepLearnStorageManager.getConversationData(tabId);
+    
+    if (!conversationData) {
+      console.log('⚠️ No conversation data found for concept map navigation');
+      return;
+    }
+    
+    // Find the new_topic chunk with this roadmap_node_index
+    const targetChunk = conversationData.chunks.find(chunk => 
+      chunk.search_type === 'new_topic' && chunk.roadmap_node_index === nodeId
+    );
+    
+    if (!targetChunk) {
+      console.log(`⚠️ No new_topic chunk found with roadmap_node_index ${nodeId}`);
+      return;
+    }
+    
+    console.log(`🎯 Found target chunk ${targetChunk.index} for roadmap node ${nodeId}`);
+    
+    // Find the start marker for this chunk
+    const startMarker = document.querySelector(`.deep-learn-response-visible-marker[data-chunk-index="${targetChunk.index}"][data-message-id^="start-"]`);
+    
+    if (startMarker) {
+      // Scroll to the start marker with smooth animation
+      startMarker.scrollIntoView({
+        behavior: 'smooth',
+        block: 'start'
+      });
+      
+      console.log(`📜 Scrolled to start marker for chunk ${targetChunk.index}`);
+    } else {
+      console.log(`⚠️ Start marker not found for chunk ${targetChunk.index}`);
+    }
   };
 
   return (
