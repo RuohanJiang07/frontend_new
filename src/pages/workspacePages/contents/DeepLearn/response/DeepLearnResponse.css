@@ -1312,3 +1312,81 @@
   border: none;
   outline: none;
 }
+
+/* Dynamic Concept Map Styles */
+.deep-learn-response-concept-map-loading {
+  display: flex;
+  flex-direction: column;
+  align-items: center;
+  justify-content: center;
+  height: 100%;
+  width: 100%;
+  gap: 12px;
+  padding: 10px;
+  box-sizing: border-box;
+}
+
+.concept-map-loading-spinner {
+  width: 24px;
+  height: 24px;
+  border: 2px solid #e0e0e0;
+  border-top: 2px solid #4C6694;
+  border-radius: 50%;
+  animation: spin 1s linear infinite;
+}
+
+.concept-map-loading-text {
+  color: #636363;
+  font-family: -apple-system, BlinkMacSystemFont, "SF Pro", "Segoe UI", Roboto, Helvetica, Arial, sans-serif;
+  font-size: 12px;
+  font-weight: 400;
+  line-height: normal;
+}
+
+@keyframes spin {
+  0% { transform: rotate(0deg); }
+  100% { transform: rotate(360deg); }
+}
+
+.deep-learn-response-concept-map-dynamic {
+  display: flex;
+  align-items: center;
+  justify-content: center;
+  width: 100%;
+  height: 100%;
+  padding: 4px;
+  box-sizing: border-box;
+  overflow: hidden; /* Ensure content doesn't overflow */
+}
+
+.concept-map-svg {
+  width: 100%;
+  height: 100%;
+  max-width: 100%;
+  max-height: 100%;
+  border-radius: 8px; /* Add slight border radius to match the container */
+}
+
+.concept-map-node-circle {
+  cursor: pointer;
+  transition: all 0.2s ease;
+}
+
+.concept-map-node-circle:hover {
+  r: 10;
+  fill: #2C4F7C;
+}
+
+.concept-map-node-text {
+  cursor: pointer;
+  user-select: none;
+  max-width: 60px;
+  text-overflow: ellipsis;
+  white-space: nowrap;
+  dominant-baseline: central;
+}
+
+.concept-map-node-text:hover {
+  fill: #2C4F7C;
+  font-weight: 600;
+}

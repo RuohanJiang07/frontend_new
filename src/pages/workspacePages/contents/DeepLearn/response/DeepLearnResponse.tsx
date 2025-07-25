@@ -25,6 +25,8 @@ interface ConversationMessage {
   chunkIndex?: number; // Add chunk index to each message
 }
 
+
+
 interface InteractiveData {
   success: boolean;
   conversation_title: string;
@@ -138,6 +140,18 @@ const DeepLearnResponse: React.FC<DeepLearnResponseProps> = ({ isSplit = false, 
     distance: number;
     isBest: boolean;
   }>>([]);
+  
+  // Concept map hover state
+  const [hoverConceptNode, setHoverConceptNode] = useState<{id: number; label: string} | null>(null);
+  
+  // Persistent roadmap state - only updates with new roadmap data
+  const [savedRoadmap, setSavedRoadmap] = useState<{
+    nodes: Array<{
+      id: number;
+      label: string;
+      neighbors: number[];
+    }>;
+  } | null>(null);
   
   // Initialize loading state and debug on mount
   useEffect(() => {
@@ -482,6 +496,15 @@ const DeepLearnResponse: React.FC<DeepLearnResponseProps> = ({ isSplit = false, 
     setCurrentInteractiveIndex(targetInteractiveIndex);
     setIsInteractiveLoading(false);
   }, [focusedChunkIndex, pageIdx, screenId, tabIdx, currentInteractiveIndex, isInteractiveLoading]); // Include isInteractiveLoading in dependencies
+
+  // Save roadmap data when new interactive data arrives
+  useEffect(() => {
+    if (interactiveData?.concept_map?.nodes && interactiveData.concept_map.nodes.length > 0) {
+      // Only update saved roadmap if we have new roadmap data
+      console.log('💾 Saving new roadmap data:', interactiveData.concept_map);
+      setSavedRoadmap(interactiveData.concept_map);
+    }
+  }, [interactiveData?.concept_map]);
 
   // Load conversation data from localStorage on component mount
   useEffect(() => {
@@ -946,6 +969,176 @@ const DeepLearnResponse: React.FC<DeepLearnResponseProps> = ({ isSplit = false, 
     } else {
       return `Me, ${date.toLocaleDateString('en-US', { month: 'short', day: 'numeric', year: 'numeric' })}, ${date.toLocaleTimeString('en-US', { hour: 'numeric', minute: '2-digit', hour12: true })}`;
     }
+  };
+
+    // Function to render the concept map based on actual data
+  const renderConceptMap = () => {
+    if (isInteractiveLoading) {
+      return (
+        <div className="deep-learn-response-concept-map-loading">
+          <div className="concept-map-loading-spinner"></div>
+          <span className="concept-map-loading-text">Loading concept map...</span>
+        </div>
+      );
+    }
+
+    // Use saved roadmap data or fallback
+    const roadmapToRender = savedRoadmap || {
+      nodes: [
+        { id: 0, label: 'Black Hole', neighbors: [1, 2, 3, 4] },
+        { id: 1, label: 'White dwarf', neighbors: [0, 2] },
+        { id: 2, label: 'Type I Supernova', neighbors: [0, 1, 5] },
+        { id: 3, label: 'Stretched Horizon', neighbors: [0] },
+        { id: 4, label: 'Cosmology', neighbors: [0] },
+        { id: 5, label: 'Gravity Wave', neighbors: [2] },
+      ]
+    };
+
+    // FORCE fit within the actual concept map box dimensions
+    // Box is 90.4% of 400px max = ~362px, minus 16px margin-left and 2px border = ~344px usable
+    // Height is 175px minus 2px border = 173px usable
+    const containerWidth = 320; // Conservative width to ensure fit
+    const containerHeight = 160; // Conservative height to ensure fit  
+    const nodeRadius = 4; // Smaller nodes
+    const padding = 35; // More padding to ensure labels fit
+    const textHeight = 16; // Reserve space for text below nodes
+    
+    // Calculate available space for positioning (force within bounds)
+    const availableWidth = containerWidth - (padding * 2);
+    const availableHeight = containerHeight - (padding * 2) - textHeight;
+    
+    // Create positions for nodes that fit within the container
+    const nodePositions = roadmapToRender.nodes.map((node, index) => {
+      let x, y;
+      
+      // Position nodes with proper boundaries and padding
+      const numNodes = roadmapToRender.nodes.length;
+      
+      if (numNodes <= 3) {
+        // For small graphs, use horizontal layout
+        x = padding + (index * availableWidth / Math.max(1, numNodes - 1));
+        y = padding + (availableHeight * 0.5);
+      } else {
+        // For larger graphs, use a more distributed layout
+        switch (index % 6) {
+          case 0: // Center-left (main node)
+            x = padding + availableWidth * 0.2;
+            y = padding + availableHeight * 0.5;
+            break;
+          case 1: // Top-right
+            x = padding + availableWidth * 0.7;
+            y = padding + availableHeight * 0.15;
+            break;
+          case 2: // Right
+            x = padding + availableWidth * 0.8;
+            y = padding + availableHeight * 0.5;
+            break;
+          case 3: // Center
+            x = padding + availableWidth * 0.5;
+            y = padding + availableHeight * 0.8;
+            break;
+          case 4: // Bottom-left
+            x = padding + availableWidth * 0.1;
+            y = padding + availableHeight * 0.7;
+            break;
+          case 5: // Bottom-right
+            x = padding + availableWidth * 0.9;
+            y = padding + availableHeight * 0.85;
+            break;
+          default:
+            x = padding + availableWidth * 0.5;
+            y = padding + availableHeight * 0.5;
+        }
+      }
+      
+      // FORCE nodes to stay within bounds (safety check)
+      x = Math.max(padding, Math.min(x, containerWidth - padding));
+      y = Math.max(padding, Math.min(y, containerHeight - textHeight - padding));
+      
+      return { ...node, x, y };
+    });
+
+    // Generate connections based on neighbors
+    const connections: Array<{
+      from: { x: number; y: number };
+      to: { x: number; y: number };
+    }> = [];
+    
+    nodePositions.forEach(node => {
+      if (node.neighbors && node.neighbors.length > 0) {
+        node.neighbors.forEach(neighborId => {
+          const neighbor = nodePositions.find(n => n.id === neighborId);
+          if (neighbor) {
+            connections.push({
+              from: { x: node.x, y: node.y },
+              to: { x: neighbor.x, y: neighbor.y }
+            });
+          }
+        });
+      }
+    });
+
+    return (
+      <div className="deep-learn-response-concept-map-dynamic">
+        <svg 
+          viewBox={`0 0 ${containerWidth} ${containerHeight}`}
+          className="concept-map-svg"
+          preserveAspectRatio="xMidYMid meet"
+        >
+          {/* Render connections first (so they appear behind nodes) */}
+          {connections.map((connection, index) => (
+            <line
+              key={`connection-${index}`}
+              x1={connection.from.x}
+              y1={connection.from.y}
+              x2={connection.to.x}
+              y2={connection.to.y}
+              stroke="#C0C0C0"
+              strokeWidth="1.5"
+              opacity="0.7"
+            />
+          ))}
+          
+          {/* Render nodes */}
+          {nodePositions.map((node) => {
+            // Use currentInteractiveIndex to determine highlighting instead of roadmap_node_index
+            const isCurrentNode = node.id === currentInteractiveIndex;
+            
+            return (
+              <g key={`node-${node.id}`}>
+                {/* Node circle */}
+                <circle
+                  cx={node.x}
+                  cy={node.y}
+                  r={nodeRadius}
+                  fill={isCurrentNode ? '#FF6B35' : '#8B8B8B'}
+                  stroke="#fff"
+                  strokeWidth="2"
+                  className="concept-map-node-circle"
+                  style={{ 
+                    cursor: 'pointer',
+                    filter: isCurrentNode ? 'drop-shadow(0 2px 8px rgba(255, 107, 53, 0.4))' : 'none'
+                  }}
+                />
+                
+                                 {/* Node label */}
+                 <text
+                   x={node.x}
+                   y={node.y + nodeRadius + 11}
+                   textAnchor="middle"
+                   fontSize="9"
+                   fill={isCurrentNode ? '#FF6B35' : '#666'}
+                   fontWeight={isCurrentNode ? '600' : '400'}
+                   className="concept-map-node-text"
+                 >
+                   {node.label.length > 8 ? node.label.substring(0, 8) + '...' : node.label}
+                 </text>
+              </g>
+            );
+          })}
+        </svg>
+      </div>
+    );
   };
 
   const renderConversationGroup = (message: ConversationMessage, index: number) => {
@@ -1924,42 +2117,20 @@ const DeepLearnResponse: React.FC<DeepLearnResponseProps> = ({ isSplit = false, 
                   <div className="deep-learn-response-concept-map-content">
                     {/* Concept Map Box */}
                     <div className="deep-learn-response-concept-map-box">
-                      {/* Concept Map visualization would go here */}
-                      <div className="deep-learn-response-concept-map-placeholder">
-                        <div className="deep-learn-response-concept-map-node black-hole-node">
-                          <div className="deep-learn-response-concept-map-node-dot"></div>
-                          <span className="deep-learn-response-concept-map-node-label">Black Hole</span>
-                        </div>
-                        <div className="deep-learn-response-concept-map-node white-dwarf-node">
-                          <div className="deep-learn-response-concept-map-node-dot"></div>
-                          <span className="deep-learn-response-concept-map-node-label">White dwarf</span>
-                        </div>
-                        <div className="deep-learn-response-concept-map-node supernova-node">
-                          <div className="deep-learn-response-concept-map-node-dot"></div>
-                          <span className="deep-learn-response-concept-map-node-label">Type I Supernova</span>
-                        </div>
-                        <div className="deep-learn-response-concept-map-node horizon-node">
-                          <div className="deep-learn-response-concept-map-node-dot"></div>
-                          <span className="deep-learn-response-concept-map-node-label">Stretched Horizon</span>
-                        </div>
-                        <div className="deep-learn-response-concept-map-node cosmology-node">
-                          <div className="deep-learn-response-concept-map-node-dot"></div>
-                          <span className="deep-learn-response-concept-map-node-label">Cosmology</span>
-                        </div>
-                        <div className="deep-learn-response-concept-map-node gravity-wave-node">
-                          <div className="deep-learn-response-concept-map-node-dot"></div>
-                          <span className="deep-learn-response-concept-map-node-label">Gravity Wave</span>
-                        </div>
-                      </div>
+                      {renderConceptMap()}
                     </div>
                     
                     {/* Current Selection Indicator */}
                     <div className="deep-learn-response-concept-map-selection">
                       <span className="deep-learn-response-concept-map-selection-text">
-                        You are currently at:
+                        You are currently exploring:
                       </span>
                       <div className="deep-learn-response-concept-map-selection-button">
-                        Black Hole
+                        {(() => {
+                          // Find the node label based on currentInteractiveIndex
+                          const currentNode = savedRoadmap?.nodes?.find(node => node.id === currentInteractiveIndex);
+                          return currentNode?.label || interactiveData?.topic || interactiveData?.interactive_content?.conversation_title || 'Learning Journey';
+                        })()}
                       </div>
                     </div>
                   </div>
