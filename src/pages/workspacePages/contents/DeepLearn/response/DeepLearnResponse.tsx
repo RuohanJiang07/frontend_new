@@ -123,6 +123,7 @@ const DeepLearnResponse: React.FC<DeepLearnResponseProps> = ({ isSplit = false, 
   const [focusedChunkIndex, setFocusedChunkIndex] = useState<number>(0); // Track currently focused/viewed chunk
   const [chunkCreated, setChunkCreated] = useState<boolean>(false); // Prevent duplicate chunk creation
   const [currentInteractiveIndex, setCurrentInteractiveIndex] = useState<number>(-1); // Track which interactive content index is currently displayed
+  const [currentRoadmapNodeIndex, setCurrentRoadmapNodeIndex] = useState<number>(-1); // Track which roadmap node should be highlighted
   const [deepLearnProgress, setDeepLearnProgress] = useState<{
     current: number;
     total: number;
@@ -494,6 +495,11 @@ const DeepLearnResponse: React.FC<DeepLearnResponseProps> = ({ isSplit = false, 
 
     setInteractiveData(interactiveDataToDisplay);
     setCurrentInteractiveIndex(targetInteractiveIndex);
+    
+    // Update roadmap node index from the focused chunk
+    setCurrentRoadmapNodeIndex(focusedChunk.roadmap_node_index);
+    console.log(`🗺️ Updated roadmap node index to ${focusedChunk.roadmap_node_index} for focused chunk ${focusedChunkIndex}`);
+    
     setIsInteractiveLoading(false);
   }, [focusedChunkIndex, pageIdx, screenId, tabIdx, currentInteractiveIndex, isInteractiveLoading]); // Include isInteractiveLoading in dependencies
 
@@ -705,6 +711,10 @@ const DeepLearnResponse: React.FC<DeepLearnResponseProps> = ({ isSplit = false, 
       setInteractiveData(data);
       setCurrentInteractiveIndex(currentChunkIndex); // Set the current interactive index to the chunk that just received the data
       
+      // Update roadmap node index from the interactive data
+      setCurrentRoadmapNodeIndex(data.roadmap_node_index);
+      console.log(`🗺️ Updated roadmap node index to ${data.roadmap_node_index} from interactive data`);
+      
       // Always stop loading when we receive interactive data, regardless of content
       console.log('✅ Interactive data received - stopping loading state');
       setIsInteractiveLoading(false);
@@ -843,6 +853,11 @@ const DeepLearnResponse: React.FC<DeepLearnResponseProps> = ({ isSplit = false, 
             timestamp: new Date().toISOString()
           });
           setCurrentInteractiveIndex(lastNewTopicChunk.index); // Set the current interactive index to the chunk we loaded from
+          
+          // Update roadmap node index from the last new_topic chunk
+          setCurrentRoadmapNodeIndex(lastNewTopicChunk.roadmap_node_index);
+          console.log(`🗺️ Updated roadmap node index to ${lastNewTopicChunk.roadmap_node_index} for followup from last new_topic chunk ${lastNewTopicChunk.index}`);
+          
           console.log(`🎯 Loaded interactive content for followup from last new_topic chunk ${lastNewTopicChunk.index}`);
         }
       }
@@ -1101,8 +1116,8 @@ const DeepLearnResponse: React.FC<DeepLearnResponseProps> = ({ isSplit = false, 
           
           {/* Render nodes */}
           {nodePositions.map((node) => {
-            // Use currentInteractiveIndex to determine highlighting instead of roadmap_node_index
-            const isCurrentNode = node.id === currentInteractiveIndex;
+            // Use currentRoadmapNodeIndex to determine highlighting
+            const isCurrentNode = node.id === currentRoadmapNodeIndex;
             
             return (
               <g key={`node-${node.id}`}>
@@ -1111,13 +1126,13 @@ const DeepLearnResponse: React.FC<DeepLearnResponseProps> = ({ isSplit = false, 
                   cx={node.x}
                   cy={node.y}
                   r={nodeRadius}
-                  fill={isCurrentNode ? '#FF6B35' : '#8B8B8B'}
+                  fill={isCurrentNode ? '#4C6694' : '#8B8B8B'}
                   stroke="#fff"
                   strokeWidth="2"
                   className="concept-map-node-circle"
                   style={{ 
                     cursor: 'pointer',
-                    filter: isCurrentNode ? 'drop-shadow(0 2px 8px rgba(255, 107, 53, 0.4))' : 'none'
+                    filter: isCurrentNode ? 'drop-shadow(0 1px 8px #6588D2)' : 'none'
                   }}
                 />
                 
@@ -1127,7 +1142,7 @@ const DeepLearnResponse: React.FC<DeepLearnResponseProps> = ({ isSplit = false, 
                    y={node.y + nodeRadius + 11}
                    textAnchor="middle"
                    fontSize="9"
-                   fill={isCurrentNode ? '#FF6B35' : '#666'}
+                   fill={isCurrentNode ? '#4C6694' : '#666'}
                    fontWeight={isCurrentNode ? '600' : '400'}
                    className="concept-map-node-text"
                  >
@@ -1396,6 +1411,7 @@ const DeepLearnResponse: React.FC<DeepLearnResponseProps> = ({ isSplit = false, 
         Creation Chunk Index: <strong>{currentChunkIndex}</strong><br/>
         <strong>👁️ Focused Chunk Index: <span style={{color: 'red'}}>{focusedChunkIndex}</span></strong><br/>
         <strong>🎯 Current Interactive Index: <span style={{color: 'blue'}}>{currentInteractiveIndex}</span></strong><br/>
+        <strong>🗺️ Current Roadmap Node Index: <span style={{color: 'green'}}>{currentRoadmapNodeIndex}</span></strong><br/>
         Conversation ID: <strong>{currentConversationId.slice(-8)}</strong><br/>
         Tab ID: <strong>{`${pageIdx}-${screenId}-${tabIdx}`}</strong><br/>
         Total Chunks: <strong>{deepLearnStorageManager.getChunkCount(`${pageIdx}-${screenId}-${tabIdx}`)}</strong><br/>
@@ -1456,8 +1472,10 @@ const DeepLearnResponse: React.FC<DeepLearnResponseProps> = ({ isSplit = false, 
             console.log('🔄 Manual Interactive Switch Test:', {
               currentFocusedChunk: focusedChunkIndex,
               currentInteractiveIndex: currentInteractiveIndex,
+              currentRoadmapNodeIndex: currentRoadmapNodeIndex,
               focusedChunk: focusedChunk,
               targetInteractiveIndex: focusedChunk?.point_to_prev_interactive_index,
+              targetRoadmapNodeIndex: focusedChunk?.roadmap_node_index,
               needsSwitch: focusedChunk?.point_to_prev_interactive_index !== currentInteractiveIndex,
               conversationData: conversationData
             });

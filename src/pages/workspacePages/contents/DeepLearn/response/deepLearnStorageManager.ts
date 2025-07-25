@@ -5,6 +5,7 @@ export interface ConversationChunk {
   index: number;
   search_type: 'new_topic' | 'followup';
   point_to_prev_interactive_index: number;
+  roadmap_node_index: number; // Add roadmap_node_index field
   interactive?: {
     conversation_title: string;
     recommended_videos: Array<{
@@ -142,11 +143,33 @@ class DeepLearnStorageManager {
       console.log(`🔗 Followup chunk ${newIndex} points to last new_topic chunk ${pointToPrevInteractiveIndex} for interactive content`);
     }
 
-    // Create new chunk with only the required fields
+    // Calculate roadmap_node_index based on search_type
+    let roadmapNodeIndex: number;
+    
+    if (searchType === 'new_topic') {
+      // For new_topic, use the roadmap_node_index from interactive data if available
+      roadmapNodeIndex = interactiveData?.roadmap_node_index ?? 0;
+      console.log(`🗺️ New topic chunk ${newIndex} roadmap_node_index: ${roadmapNodeIndex}`);
+    } else {
+      // For followup, use the roadmap_node_index from the last new_topic chunk
+      let lastNewTopicRoadmapIndex = 0;
+      for (let i = conversationData.chunks.length - 1; i >= 0; i--) {
+        if (conversationData.chunks[i].search_type === 'new_topic') {
+          lastNewTopicRoadmapIndex = conversationData.chunks[i].roadmap_node_index;
+          break;
+        }
+      }
+      
+      roadmapNodeIndex = lastNewTopicRoadmapIndex;
+      console.log(`🗺️ Followup chunk ${newIndex} roadmap_node_index: ${roadmapNodeIndex} (from last new_topic chunk)`);
+    }
+
+    // Create new chunk with all required fields
     const newChunk: ConversationChunk = {
       index: newIndex,
       search_type: searchType,
-      point_to_prev_interactive_index: pointToPrevInteractiveIndex
+      point_to_prev_interactive_index: pointToPrevInteractiveIndex,
+      roadmap_node_index: roadmapNodeIndex
     };
 
     // Add interactive data only for new_topic search type
@@ -177,6 +200,7 @@ class DeepLearnStorageManager {
       index: newChunk.index,
       search_type: newChunk.search_type,
       point_to_prev_interactive_index: newChunk.point_to_prev_interactive_index,
+      roadmap_node_index: newChunk.roadmap_node_index,
       hasInteractive: !!newChunk.interactive
     });
 
@@ -197,6 +221,12 @@ class DeepLearnStorageManager {
       return;
     }
 
+    // Update roadmap_node_index from interactive data
+    if (interactiveData?.roadmap_node_index !== undefined) {
+      chunk.roadmap_node_index = interactiveData.roadmap_node_index;
+      console.log(`🗺️ Updated roadmap_node_index for chunk ${chunkIndex}: ${chunk.roadmap_node_index}`);
+    }
+
     chunk.interactive = {
       conversation_title: interactiveData.interactive_content?.conversation_title || 'Untitled',
       recommended_videos: (interactiveData.interactive_content?.recommended_videos || []).map((video: any) => ({
@@ -212,7 +242,8 @@ class DeepLearnStorageManager {
     console.log(`🎯 Added interactive data to chunk ${chunkIndex}:`, {
       videoCount: chunk.interactive.recommended_videos.length,
       webpageCount: chunk.interactive.related_webpages.length,
-      conceptCount: chunk.interactive.related_concepts.length
+      conceptCount: chunk.interactive.related_concepts.length,
+      roadmap_node_index: chunk.roadmap_node_index
     });
   }
 
@@ -271,6 +302,7 @@ class DeepLearnStorageManager {
           index: chunk.index,
           search_type: chunk.search_type,
           point_to_prev_interactive_index: chunk.point_to_prev_interactive_index,
+          roadmap_node_index: chunk.roadmap_node_index,
           hasInteractive: !!chunk.interactive,
           interactiveVideoCount: chunk.interactive?.recommended_videos?.length || 0,
           interactiveWebpageCount: chunk.interactive?.related_webpages?.length || 0
