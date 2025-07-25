@@ -3,7 +3,6 @@ import { Routes, Route } from 'react-router-dom'
 import LoginPage from './pages/mainPages/login/LoginPage'
 import MyWorkspaces from './pages/mainPages/myWorkspaces/myWorkspaces'
 import BookWorkspaces from './pages/workspacePages/workspaceFrame/BookWorkspaces'
-import HomePage from './pages/mainPages/home/HomePage'
 
 function App() {
   return (
@@ -11,7 +10,6 @@ function App() {
       <Routes>
         <Route path="/login" element={<LoginPage />} />
         <Route path="/" element={<MyWorkspaces />} />
-        <Route path="/home" element={<HomePage />} />
         <Route path="/workspaces" element={<MyWorkspaces />} />
         <Route path="/workspace" element={<BookWorkspaces />} />
       </Routes>
