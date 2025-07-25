@@ -128,6 +128,17 @@ const DeepLearnResponse: React.FC<DeepLearnResponseProps> = ({ isSplit = false, 
     status: string;
   } | null>(null);
   
+  // Debug state for separator scores
+  const [separatorScores, setSeparatorScores] = useState<Array<{
+    chunkIndex: number;
+    messageId: string;
+    visibility: number;
+    centerScore: number;
+    finalScore: number;
+    distance: number;
+    isBest: boolean;
+  }>>([]);
+  
   // Initialize loading state and debug on mount
   useEffect(() => {
     console.log('🔧 Ensuring loading state is true on mount');
@@ -135,7 +146,12 @@ const DeepLearnResponse: React.FC<DeepLearnResponseProps> = ({ isSplit = false, 
     setIsInteractiveLoading(true);
     // Initialize focused chunk to 0 (first chunk)
     setFocusedChunkIndex(0);
-  }, []);
+    
+    // Clear any existing interactive data to ensure fresh start
+    const tabId = `${pageIdx}-${screenId}-${tabIdx}`;
+    localStorage.removeItem(`deeplearn_interactive_${tabId}`);
+    console.log(`🧹 Cleared any existing interactive data on mount for tab: ${tabId}`);
+  }, [pageIdx, screenId, tabIdx]);
   
   // Debug loading state changes
   useEffect(() => {
@@ -168,10 +184,127 @@ const DeepLearnResponse: React.FC<DeepLearnResponseProps> = ({ isSplit = false, 
         const viewportHeight = window.innerHeight;
         const viewportCenter = viewportHeight / 2;
 
-        entries.forEach(entry => {
-          if (entry.isIntersecting) {
-            const element = entry.target as HTMLElement;
+        // Process ALL markers, not just intersecting ones
+        const allMarkers = document.querySelectorAll('.deep-learn-response-visible-marker[data-chunk-index]');
+        
+        Array.from(allMarkers).forEach(element => {
+          const rect = element.getBoundingClientRect();
+          const isInViewport = rect.bottom > 0 && rect.top < viewportHeight;
+          
+          if (isInViewport) {
             const chunkIndex = parseInt(element.getAttribute('data-chunk-index') || '0');
+            
+            if (!chunkVisibility.has(chunkIndex)) {
+              chunkVisibility.set(chunkIndex, { 
+                maxRatio: 1.0, // Always consider fully visible
+                totalRatio: 1.0,
+                count: 1,
+                centerDistance: Infinity
+              });
+            }
+            
+            const chunkData = chunkVisibility.get(chunkIndex)!;
+            
+            // Calculate distance from viewport center
+            const elementCenter = rect.top + rect.height / 2;
+            const distance = Math.abs(elementCenter - viewportCenter);
+            chunkData.centerDistance = Math.min(chunkData.centerDistance, distance);
+          }
+        });
+
+        // Find the chunk with best visibility and center positioning
+        let bestChunkIndex = -1;
+        let bestScore = 0;
+        const debugScores: Array<{
+          chunkIndex: number;
+          messageId: string;
+          visibility: number;
+          centerScore: number;
+          finalScore: number;
+          distance: number;
+          isBest: boolean;
+        }> = [];
+
+        chunkVisibility.forEach((data, chunkIndex) => {
+          // Remove visibility check - purely center-distance based
+          
+          // Calculate center proximity score (closer to center = higher score)
+          const centerScore = Math.max(0, 1 - (data.centerDistance / viewportHeight));
+          
+          // Focus purely on center proximity - closest to center wins
+          const score = centerScore;
+          
+          // Find the message ID for this chunk
+          const marker = document.querySelector(`.deep-learn-response-visible-marker[data-chunk-index="${chunkIndex}"]`);
+          const messageId = marker?.getAttribute('data-message-id') || 'unknown';
+          
+          // Add to debug scores
+          debugScores.push({
+            chunkIndex,
+            messageId,
+            visibility: data.maxRatio,
+            centerScore,
+            finalScore: score,
+            distance: data.centerDistance,
+            isBest: false // Will be updated below
+          });
+          
+          if (score > bestScore) {
+            bestChunkIndex = chunkIndex;
+            bestScore = score;
+          }
+        });
+        
+        // Mark the best chunk in debug scores
+        debugScores.forEach(item => {
+          item.isBest = item.chunkIndex === bestChunkIndex;
+        });
+        
+        // Update debug state
+        setSeparatorScores(debugScores.sort((a, b) => a.chunkIndex - b.chunkIndex));
+
+        // Update focused chunk if it changed and we found a valid chunk
+        if (bestChunkIndex !== -1 && bestChunkIndex !== focusedChunkIndex) {
+          const bestData = chunkVisibility.get(bestChunkIndex);
+          if (bestData) {
+            const centerScore = Math.max(0, 1 - (bestData.centerDistance / viewportHeight));
+            console.log(`👁️ Focus changed to chunk ${bestChunkIndex} (visibility: ${(bestData.maxRatio * 100).toFixed(1)}%, center: ${(centerScore * 100).toFixed(1)}%, score: ${(bestScore * 100).toFixed(1)}%)`);
+            setFocusedChunkIndex(bestChunkIndex);
+          }
+        }
+      }, 10); // ~60fps sample rate for smooth detection
+    };
+
+    const observer = new IntersectionObserver(handleIntersection, observerOptions);
+
+    // Add scroll listener to continuously update center distances (for when visibility = 100%)
+    const handleScroll = () => {
+      clearTimeout(updateTimeout);
+      updateTimeout = setTimeout(() => {
+        // Force a manual update of all visible markers' center distances
+        const visibleMarkers = document.querySelectorAll('.deep-learn-response-visible-marker[data-chunk-index]');
+        const chunkVisibility = new Map<number, { 
+          maxRatio: number, 
+          totalRatio: number, 
+          count: number,
+          centerDistance: number
+        }>();
+
+        const viewportHeight = window.innerHeight;
+        const viewportCenter = viewportHeight / 2;
+
+        Array.from(visibleMarkers).forEach(marker => {
+          const rect = marker.getBoundingClientRect();
+          const isVisible = rect.top < viewportHeight && rect.bottom > 0;
+          
+          if (isVisible) {
+            const chunkIndex = parseInt(marker.getAttribute('data-chunk-index') || '0');
+            const elementCenter = rect.top + rect.height / 2;
+            const distance = Math.abs(elementCenter - viewportCenter);
+            
+            // Calculate intersection ratio manually
+            const visibleHeight = Math.min(rect.bottom, viewportHeight) - Math.max(rect.top, 0);
+            const intersectionRatio = Math.max(0, Math.min(1, visibleHeight / rect.height));
             
             if (!chunkVisibility.has(chunkIndex)) {
               chunkVisibility.set(chunkIndex, { 
@@ -183,65 +316,73 @@ const DeepLearnResponse: React.FC<DeepLearnResponseProps> = ({ isSplit = false, 
             }
             
             const chunkData = chunkVisibility.get(chunkIndex)!;
-            chunkData.maxRatio = Math.max(chunkData.maxRatio, entry.intersectionRatio);
-            chunkData.totalRatio += entry.intersectionRatio;
-            chunkData.count += 1;
-            
-            // Calculate distance from viewport center (now for the entire chunk)
-            const rect = element.getBoundingClientRect();
-            const elementCenter = rect.top + rect.height / 2;
-            const distance = Math.abs(elementCenter - viewportCenter);
+            chunkData.maxRatio = Math.max(chunkData.maxRatio, intersectionRatio);
             chunkData.centerDistance = Math.min(chunkData.centerDistance, distance);
           }
         });
 
-        // Find the chunk with best visibility and center positioning
+        // Same scoring logic as before
         let bestChunkIndex = -1;
         let bestScore = 0;
+        const debugScores: Array<{
+          chunkIndex: number;
+          messageId: string;
+          visibility: number;
+          centerScore: number;
+          finalScore: number;
+          distance: number;
+          isBest: boolean;
+        }> = [];
 
-        chunkVisibility.forEach((data, chunkIndex) => {
-          // Must have at least 25% visibility to be considered (reduced from 30%)
-          if (data.maxRatio < 0.25) {
-            return;
-          }
-
-          // Calculate center proximity score (closer to center = higher score)
-          const centerScore = Math.max(0, 1 - (data.centerDistance / viewportHeight));
+                 chunkVisibility.forEach((data, chunkIndex) => {
+           // Remove visibility check - purely center-distance based
+           
+           const centerScore = Math.max(0, 1 - (data.centerDistance / viewportHeight));
+           const score = centerScore;
           
-          // Combined score: 70% visibility + 30% center proximity
-          const score = data.maxRatio * 0.7 + centerScore * 0.3;
+          const marker = document.querySelector(`.deep-learn-response-visible-marker[data-chunk-index="${chunkIndex}"]`);
+          const messageId = marker?.getAttribute('data-message-id') || 'unknown';
+          
+          debugScores.push({
+            chunkIndex,
+            messageId,
+            visibility: data.maxRatio,
+            centerScore,
+            finalScore: score,
+            distance: data.centerDistance,
+            isBest: false
+          });
           
           if (score > bestScore) {
             bestChunkIndex = chunkIndex;
             bestScore = score;
           }
         });
+        
+        debugScores.forEach(item => {
+          item.isBest = item.chunkIndex === bestChunkIndex;
+        });
+        
+        setSeparatorScores(debugScores.sort((a, b) => a.chunkIndex - b.chunkIndex));
 
-        // Update focused chunk if it changed and we found a valid chunk
         if (bestChunkIndex !== -1 && bestChunkIndex !== focusedChunkIndex) {
-          const bestData = chunkVisibility.get(bestChunkIndex);
-          if (bestData) {
-            const centerScore = Math.max(0, 1 - (bestData.centerDistance / viewportHeight));
-            console.log(`👁️ Focus changed to chunk ${bestChunkIndex} (visibility: ${(bestData.maxRatio * 100).toFixed(1)}%, center: ${(centerScore * 100).toFixed(1)}%, score: ${(bestScore * 100).toFixed(1)}%)`);
-            setFocusedChunkIndex(bestChunkIndex);
-          }
+          console.log(`👁️ Focus changed to chunk ${bestChunkIndex} via scroll listener`);
+          setFocusedChunkIndex(bestChunkIndex);
         }
-      }, 100); // Increased debounce for more stability
+      }, 1);
     };
-
-    const observer = new IntersectionObserver(handleIntersection, observerOptions);
 
     // Small delay to ensure DOM is ready
     const setupObserver = () => {
-      // Observe all chunk containers (which now contain both question and answer)
-      const chunkContainers = document.querySelectorAll('.deep-learn-response-chunk[data-chunk-index]');
-      chunkContainers.forEach(chunk => observer.observe(chunk));
+      // Observe all visible markers (both start and end)
+      const visibleMarkers = document.querySelectorAll('.deep-learn-response-visible-marker[data-chunk-index]');
+      visibleMarkers.forEach(marker => observer.observe(marker));
       
-      console.log(`🔍 Started observing ${chunkContainers.length} chunk containers for focus tracking`);
-      console.log(`📊 Chunk visibility map:`, Array.from(chunkContainers).map(el => ({
+      console.log(`🔍 Started observing ${visibleMarkers.length} visible markers for focus tracking`);
+      console.log(`📊 Marker visibility map:`, Array.from(visibleMarkers).map(el => ({
         chunkIndex: el.getAttribute('data-chunk-index'),
-        hasQuestion: !!el.querySelector('.deep-learn-response-question'),
-        hasAnswer: !!el.querySelector('.deep-learn-response-answer'),
+        messageId: el.getAttribute('data-message-id'),
+        type: el.getAttribute('data-message-id')?.includes('start') ? 'START' : 'END',
         element: el.className
       })));
     };
@@ -249,19 +390,29 @@ const DeepLearnResponse: React.FC<DeepLearnResponseProps> = ({ isSplit = false, 
     // Setup observer with a small delay to ensure DOM is ready
     const setupTimeout = setTimeout(setupObserver, 100);
 
+    // Add scroll listener for continuous updates
+    window.addEventListener('scroll', handleScroll, { passive: true });
+    
     return () => {
       clearTimeout(updateTimeout);
       clearTimeout(setupTimeout);
       observer.disconnect();
-      console.log('🧹 Cleaned up intersection observer');
+      window.removeEventListener('scroll', handleScroll);
+      console.log('🧹 Cleaned up intersection observer and scroll listener');
     };
-  }, [conversation.length, focusedChunkIndex]); // Re-run when conversation changes
+  }, [conversation, focusedChunkIndex]); // Re-run when conversation changes (including content changes)
 
   // Interactive content switching logic based on focused chunk changes
   useEffect(() => {
     // Only proceed if we have a valid focused chunk index and conversation data
     if (focusedChunkIndex < 0) {
       console.log('⚠️ Invalid focused chunk index, skipping interactive content switch');
+      return;
+    }
+
+    // Don't switch interactive content if we're currently loading interactive data
+    if (isInteractiveLoading) {
+      console.log('⏳ Interactive content is currently loading - skipping switch to avoid interference');
       return;
     }
 
@@ -330,7 +481,7 @@ const DeepLearnResponse: React.FC<DeepLearnResponseProps> = ({ isSplit = false, 
     setInteractiveData(interactiveDataToDisplay);
     setCurrentInteractiveIndex(targetInteractiveIndex);
     setIsInteractiveLoading(false);
-  }, [focusedChunkIndex, pageIdx, screenId, tabIdx, currentInteractiveIndex]); // Include currentInteractiveIndex in dependencies
+  }, [focusedChunkIndex, pageIdx, screenId, tabIdx, currentInteractiveIndex, isInteractiveLoading]); // Include isInteractiveLoading in dependencies
 
   // Load conversation data from localStorage on component mount
   useEffect(() => {
@@ -338,10 +489,6 @@ const DeepLearnResponse: React.FC<DeepLearnResponseProps> = ({ isSplit = false, 
     const query = localStorage.getItem('current_deeplearn_query');
     const mode = localStorage.getItem('current_deeplearn_mode');
     const webSearch = localStorage.getItem('current_deeplearn_web_search') === 'true';
-    
-    // Don't load cached interactive data - always start fresh
-    // Interactive data should only come from the current API call
-    console.log('🚀 Starting fresh - no cached interactive data loaded');
     
     if (conversationId && query && (mode === 'quick-search' || mode === 'deep-learn')) {
       // Store the conversation ID for follow-up queries
@@ -397,6 +544,10 @@ const DeepLearnResponse: React.FC<DeepLearnResponseProps> = ({ isSplit = false, 
         
         setConversation([initialQuestion, streamingAnswer]);
         
+        // Ensure interactive loading is true for new conversation
+        setIsInteractiveLoading(true);
+        console.log('🔄 Set interactive loading to true for new quick search conversation');
+        
         // Call the quick search API to get the streaming response
         submitQuickSearchQuery(
           query,
@@ -430,6 +581,10 @@ const DeepLearnResponse: React.FC<DeepLearnResponseProps> = ({ isSplit = false, 
         };
         
         setConversation([initialQuestion, streamingAnswer]);
+        
+        // Ensure interactive loading is true for new conversation
+        setIsInteractiveLoading(true);
+        console.log('🔄 Set interactive loading to true for new deep learn conversation');
         
         // Call the deep learn API to get the streaming response
         submitDeepLearnDeepQuery(
@@ -474,8 +629,9 @@ const DeepLearnResponse: React.FC<DeepLearnResponseProps> = ({ isSplit = false, 
       localStorage.removeItem('current_deeplearn_mode');
       localStorage.removeItem('current_deeplearn_web_search');
       
-      // Clear any existing interactive data for this tab
+      // Clear any existing interactive data for this tab to ensure fresh start
       localStorage.removeItem(`deeplearn_interactive_${tabId}`);
+      console.log(`🧹 Cleared cached interactive data for fresh start: ${tabId}`);
     }
   }, [pageIdx, screenId, tabIdx]);
 
@@ -519,19 +675,24 @@ const DeepLearnResponse: React.FC<DeepLearnResponseProps> = ({ isSplit = false, 
         deepLearnStorageManager.addInteractiveToChunk(tabId, currentChunkIndex, data);
         console.log(`🎯 Saved interactive data to chunk ${currentChunkIndex} in storage`);
         deepLearnStorageManager.debugLogStorage(tabId);
+      } else {
+        console.log('⚠️ Current chunk index is invalid, cannot save interactive data');
       }
       
       setInteractiveData(data);
       setCurrentInteractiveIndex(currentChunkIndex); // Set the current interactive index to the chunk that just received the data
       
-      // Only stop loading if we have actual content
-      if (data?.interactive_content?.recommended_videos?.length > 0 || 
-          data?.interactive_content?.related_webpages?.length > 0) {
-        console.log('✅ Interactive content received - stopping loading state');
-        setIsInteractiveLoading(false);
-      } else {
-        console.log('⚠️ Interactive data received but no content yet - keeping loading state');
-      }
+      // Always stop loading when we receive interactive data, regardless of content
+      console.log('✅ Interactive data received - stopping loading state');
+      setIsInteractiveLoading(false);
+      
+      // Log the interactive data that was set
+      console.log('📊 Set interactive data:', {
+        hasData: !!data,
+        hasInteractiveContent: !!data?.interactive_content,
+        videoCount: data?.interactive_content?.recommended_videos?.length || 0,
+        webpageCount: data?.interactive_content?.related_webpages?.length || 0
+      });
     };
 
     window.addEventListener('deeplearn-interactive-update', handleInteractiveUpdate as EventListener);
@@ -794,6 +955,29 @@ const DeepLearnResponse: React.FC<DeepLearnResponseProps> = ({ isSplit = false, 
           key={message.id} 
           className="deep-learn-response-conversation-group"
         >
+          {/* Start Marker - Visible at beginning of conversation exchange */}
+          <div 
+            className="deep-learn-response-visible-marker"
+            data-chunk-index={message.chunkIndex || 0}
+            data-message-id={`start-${message.id}`}
+            style={{
+              height: '30px',
+              width: '100%',
+              backgroundColor: '#e8f4f8',
+              border: '2px solid #4CAF50',
+              borderRadius: '5px',
+              display: 'flex',
+              alignItems: 'center',
+              justifyContent: 'center',
+              marginBottom: '10px',
+              fontSize: '12px',
+              fontWeight: 'bold',
+              color: '#2E7D32'
+            }}
+          >
+            📍 START CHUNK {message.chunkIndex || 0}
+          </div>
+          
           {/* Question Part */}
           <div className="deep-learn-response-question">
             <span className="deep-learn-response-question-date">
@@ -942,6 +1126,31 @@ const DeepLearnResponse: React.FC<DeepLearnResponseProps> = ({ isSplit = false, 
               <div className="deep-learn-response-separator" style={{ marginTop: '10px' }}></div>
             )}
           </div>
+          
+          {/* End Marker - Visible at end of conversation exchange - Only show when not streaming */}
+          {!message.isStreaming && (
+            <div 
+              className="deep-learn-response-visible-marker"
+              data-chunk-index={message.chunkIndex || 0}
+              data-message-id={`end-${message.id}`}
+              style={{
+                height: '30px',
+                width: '100%',
+                backgroundColor: '#fff3e0',
+                border: '2px solid #FF9800',
+                borderRadius: '5px',
+                display: 'flex',
+                alignItems: 'center',
+                justifyContent: 'center',
+                marginTop: '10px',
+                fontSize: '12px',
+                fontWeight: 'bold',
+                color: '#E65100'
+              }}
+            >
+              🏁 END CHUNK {message.chunkIndex || 0}
+            </div>
+          )}
         </div>
       );
     }
@@ -951,6 +1160,30 @@ const DeepLearnResponse: React.FC<DeepLearnResponseProps> = ({ isSplit = false, 
 
   return (
     <div className="deep-learn-response">
+      {/* Center of Screen Marker */}
+      <div style={{
+        position: 'fixed',
+        top: '50%',
+        left: '50%',
+        transform: 'translate(-50%, -50%)',
+        width: '200px',
+        height: '30px',
+        backgroundColor: 'rgba(255, 0, 0, 0.8)',
+        border: '2px solid #FF0000',
+        borderRadius: '15px',
+        display: 'flex',
+        alignItems: 'center',
+        justifyContent: 'center',
+        fontSize: '12px',
+        fontWeight: 'bold',
+        color: 'white',
+        zIndex: 999,
+        pointerEvents: 'none',
+        boxShadow: '0 2px 10px rgba(0,0,0,0.3)'
+      }}>
+        🎯 SCREEN CENTER (Focus Target)
+      </div>
+
       {/* Debug Panel - Remove this in production */}
       <div style={{
         position: 'fixed',
@@ -962,7 +1195,9 @@ const DeepLearnResponse: React.FC<DeepLearnResponseProps> = ({ isSplit = false, 
         borderRadius: '5px',
         fontSize: '12px',
         zIndex: 1000,
-        maxWidth: '300px'
+        maxWidth: '400px',
+        maxHeight: '80vh',
+        overflowY: 'auto'
       }}>
         <strong>🔍 Debug Info:</strong><br/>
         Creation Chunk Index: <strong>{currentChunkIndex}</strong><br/>
@@ -972,6 +1207,33 @@ const DeepLearnResponse: React.FC<DeepLearnResponseProps> = ({ isSplit = false, 
         Tab ID: <strong>{`${pageIdx}-${screenId}-${tabIdx}`}</strong><br/>
         Total Chunks: <strong>{deepLearnStorageManager.getChunkCount(`${pageIdx}-${screenId}-${tabIdx}`)}</strong><br/>
         Interactive Loading: <strong>{isInteractiveLoading ? 'Yes' : 'No'}</strong><br/>
+        
+        <div style={{marginTop: '10px', padding: '5px', backgroundColor: '#e8e8e8', borderRadius: '3px'}}>
+          <strong>📊 Separator Scores:</strong><br/>
+          {separatorScores.length > 0 ? (
+            separatorScores.map((item, index) => (
+              <div key={index} style={{
+                margin: '3px 0',
+                padding: '3px',
+                backgroundColor: item.isBest ? '#90EE90' : '#fff',
+                border: item.isBest ? '2px solid #006400' : '1px solid #ccc',
+                borderRadius: '2px',
+                fontSize: '10px'
+              }}>
+                <strong>Chunk {item.chunkIndex}</strong> {item.isBest ? '👑' : ''}<br/>
+                Visibility: <strong>{(item.visibility * 100).toFixed(1)}%</strong><br/>
+                Center: <strong>{(item.centerScore * 100).toFixed(1)}%</strong> (dist: {item.distance.toFixed(0)}px)<br/>
+                Final: <strong>{(item.finalScore * 100).toFixed(1)}%</strong><br/>
+                <span style={{fontSize: '9px', color: '#666'}}>
+                  {item.finalScore.toFixed(3)} = centerScore (closest to center wins)
+                </span>
+              </div>
+            ))
+          ) : (
+            <span style={{fontSize: '10px', color: '#666'}}>No separators detected</span>
+          )}
+        </div>
+        
         <button 
           onClick={() => deepLearnStorageManager.debugLogStorage(`${pageIdx}-${screenId}-${tabIdx}`)}
           style={{fontSize: '10px', marginTop: '5px', padding: '2px 6px', marginRight: '5px'}}
@@ -980,10 +1242,11 @@ const DeepLearnResponse: React.FC<DeepLearnResponseProps> = ({ isSplit = false, 
         </button>
         <button 
           onClick={() => {
-            const groups = document.querySelectorAll('[data-chunk-index]');
-            console.log('🔍 DOM Focus Debug:', Array.from(groups).map(el => ({
+            const markers = document.querySelectorAll('.deep-learn-response-visible-marker[data-chunk-index]');
+            console.log('🔍 DOM Focus Debug:', Array.from(markers).map(el => ({
               chunkIndex: el.getAttribute('data-chunk-index'),
-              type: el.querySelector('.deep-learn-response-question') ? 'question' : 'answer',
+              messageId: el.getAttribute('data-message-id'),
+              type: el.getAttribute('data-message-id')?.includes('start') ? 'START' : 'END',
               isVisible: el.getBoundingClientRect().top < window.innerHeight && el.getBoundingClientRect().bottom > 0,
               rect: el.getBoundingClientRect()
             })));
@@ -1012,11 +1275,11 @@ const DeepLearnResponse: React.FC<DeepLearnResponseProps> = ({ isSplit = false, 
         </button>
         <button 
           onClick={() => {
-            const chunks = document.querySelectorAll('.deep-learn-response-chunk[data-chunk-index]');
+            const markers = document.querySelectorAll('.deep-learn-response-visible-marker[data-chunk-index]');
             const viewportHeight = window.innerHeight;
             const viewportCenter = viewportHeight / 2;
             
-            console.log('🔍 Focus Detection Debug:', Array.from(chunks).map(el => {
+            console.log('🔍 Focus Detection Debug:', Array.from(markers).map(el => {
               const rect = el.getBoundingClientRect();
               const elementCenter = rect.top + rect.height / 2;
               const distance = Math.abs(elementCenter - viewportCenter);
@@ -1027,8 +1290,8 @@ const DeepLearnResponse: React.FC<DeepLearnResponseProps> = ({ isSplit = false, 
               
               return {
                 chunkIndex: el.getAttribute('data-chunk-index'),
-                hasQuestion: !!el.querySelector('.deep-learn-response-question'),
-                hasAnswer: !!el.querySelector('.deep-learn-response-answer'),
+                messageId: el.getAttribute('data-message-id'),
+                type: el.getAttribute('data-message-id')?.includes('start') ? 'START' : 'END',
                 visibility: `${(visibility * 100).toFixed(1)}%`,
                 centerDistance: `${distance.toFixed(0)}px`,
                 centerScore: `${(centerScore * 100).toFixed(1)}%`,

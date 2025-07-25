@@ -1299,3 +1299,16 @@
   font-weight: 500;
   line-height: normal;
 }
+
+/* Invisible separator for intersection detection */
+.deep-learn-response-invisible-separator {
+  height: 1px;
+  width: 100%;
+  opacity: 0;
+  pointer-events: none;
+  margin-top: 20px;
+  /* Ensure it's not visible but still detectable by Intersection Observer */
+  background: transparent;
+  border: none;
+  outline: none;
+}
