@@ -125,6 +125,34 @@
 .ProseMirror ul,
 .ProseMirror ol {
   padding-left: 24px;
+  margin: 0;
+}
+
+.ProseMirror ul {
+  list-style-type: disc;
+}
+
+.ProseMirror ol {
+  list-style-type: decimal;
+}
+
+.ProseMirror li {
+  display: list-item;
+  margin: 0;
+  padding: 0;
+  line-height: 1.7;
+  min-height: 1.7em;
+  box-sizing: border-box;
+  font-size: 16px;
+  list-style-position: outside;
+}
+
+.ProseMirror ul li {
+  list-style-type: disc;
+}
+
+.ProseMirror ol li {
+  list-style-type: decimal;
 }
 
 .ProseMirror strong {
@@ -174,6 +202,43 @@
 .ProseMirror a:hover {
   color: #1d4ed8;
   border-bottom: 1px solid #1d4ed8;
+}
+
+/* Highlight colors - exact values from the color picker */
+.ProseMirror mark,
+.ProseMirror .highlight-mark {
+  border-radius: 2px;
+  padding: 0 2px;
+}
+
+.ProseMirror mark[style*="background-color: #FEF9C3"],
+.ProseMirror .highlight-mark[style*="background-color: #FEF9C3"] {
+  background-color: #FEF9C3 !important;
+}
+
+.ProseMirror mark[style*="background-color: #DCFCE7"],
+.ProseMirror .highlight-mark[style*="background-color: #DCFCE7"] {
+  background-color: #DCFCE7 !important;
+}
+
+.ProseMirror mark[style*="background-color: #DBEAFE"],
+.ProseMirror .highlight-mark[style*="background-color: #DBEAFE"] {
+  background-color: #DBEAFE !important;
+}
+
+.ProseMirror mark[style*="background-color: #F3E8FF"],
+.ProseMirror .highlight-mark[style*="background-color: #F3E8FF"] {
+  background-color: #F3E8FF !important;
+}
+
+.ProseMirror mark[style*="background-color: #FCE7F3"],
+.ProseMirror .highlight-mark[style*="background-color: #FCE7F3"] {
+  background-color: #FCE7F3 !important;
+}
+
+.ProseMirror mark[style*="background-color: #F3F4F6"],
+.ProseMirror .highlight-mark[style*="background-color: #F3F4F6"] {
+  background-color: #F3F4F6 !important;
 }
 
 /* Improved scrolling behavior - allow content to scroll to middle of screen */
