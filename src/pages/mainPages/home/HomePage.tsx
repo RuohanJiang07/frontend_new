@@ -6,7 +6,7 @@ import { DropdownMenu, DropdownMenuTrigger, DropdownMenuContent, DropdownMenuIte
 import { Button } from '../../../components/ui/button';
 import { Avatar, AvatarImage, AvatarFallback } from '@radix-ui/react-avatar';
 import { Card } from '../../../components/mainPages/myWorkspaces/card';
-import ProfileManagementModal from '../../../components/mainPages/myWorkspaces/ProfileManagementModal';
+import ProfileManagementModal from '../../../components/mainPages/myWorkspaces/profileManagementModal';
 import { ToastContainer } from '../../../components/ui/ToastContainer';
 import { useToast } from '../../../hooks/useToast';
 import './HomePage.css';

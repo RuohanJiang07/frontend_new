@@ -10,7 +10,7 @@ import { Card } from '../../../components/mainPages/myWorkspaces/card';
 import ProjectDirectory from '../../../components/mainPages/myWorkspaces/projectDirectory';
 import { ShiftingDropDown } from '../../../components/mainPages/myWorkspaces/shiftingDropdown';
 import CreateWorkspaceModal from '../../../components/mainPages/myWorkspaces/createWorkspaceModal/createWorkspaceModal';
-import ProfileManagementModal from '../../../components/mainPages/myWorkspaces/ProfileManagementModal';
+import ProfileManagementModal from '../../../components/mainPages/myWorkspaces/profileManagementModal';
 import { ToastContainer } from '../../../components/ui/ToastContainer';
 import { useToast } from '../../../hooks/useToast';
 import { getAllWorkspaces } from '../../../api/mainPages/workspaces';
