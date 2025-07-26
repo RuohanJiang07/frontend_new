@@ -5,7 +5,7 @@
   justify-content: center;
   align-items: flex-start;
   overflow-y: auto;
-  padding: 35px 0 20px 0;
+  padding: 0px 0 20px 0;
 }
 
 .note-content {
@@ -21,7 +21,7 @@
 .note-header {
   display: flex;
   align-items: center;
-  margin-top: 40px;
+  margin-top: 20px;
   margin-bottom: 23px;
 }
 

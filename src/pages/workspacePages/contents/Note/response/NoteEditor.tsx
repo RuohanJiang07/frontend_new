@@ -7,6 +7,13 @@ import TextAlign from '@tiptap/extension-text-align';
 import { TextStyle } from '@tiptap/extension-text-style';
 import Color from '@tiptap/extension-color';
 import FontFamily from '@tiptap/extension-font-family';
+import Highlight from '@tiptap/extension-highlight';
+import Link from '@tiptap/extension-link';
+import Image from '@tiptap/extension-image';
+import { Table } from '@tiptap/extension-table';
+import TableRow from '@tiptap/extension-table-row';
+import TableCell from '@tiptap/extension-table-cell';
+import TableHeader from '@tiptap/extension-table-header';
 import { useTabContext } from '../../../workspaceFrame/TabContext';
 import { getNoteContent, saveNoteContent } from '../../../../../api/workspaces/note/note';
 import { useToast } from '../../../../../hooks/useToast';
@@ -117,7 +124,8 @@ function NoteEditor({ onBack, tabIdx = 0, pageIdx = 0, screenId = '' }: NoteEdit
 
   const updateLineCount = (editor: Editor) => {
     const dom = editor.view.dom;
-    const elements = dom.querySelectorAll('p, h1, h2, h3, li, blockquote, pre');
+    // Only count top-level elements, not list items
+    const elements = dom.querySelectorAll('p, h1, h2, h3, ul, ol, blockquote, pre');
     
     let totalLines = 0;
     const heights: number[] = [];
@@ -159,7 +167,18 @@ function NoteEditor({ onBack, tabIdx = 0, pageIdx = 0, screenId = '' }: NoteEdit
 
   const editor = useEditor({
     extensions: [
-      StarterKit,
+      StarterKit.configure({
+        bulletList: {
+          HTMLAttributes: {
+            class: 'list-disc',
+          },
+        },
+        orderedList: {
+          HTMLAttributes: {
+            class: 'list-decimal',
+          },
+        },
+      }),
       Underline,
       TextAlign.configure({
         types: ['heading', 'paragraph'],
@@ -167,6 +186,25 @@ function NoteEditor({ onBack, tabIdx = 0, pageIdx = 0, screenId = '' }: NoteEdit
       TextStyle,
       Color,
       FontFamily,
+      Highlight.configure({
+        multicolor: true,
+        HTMLAttributes: {
+          class: 'highlight-mark',
+        },
+      }),
+      Link.configure({
+        openOnClick: false,
+        HTMLAttributes: {
+          class: 'text-blue-500 underline cursor-pointer',
+        },
+      }),
+      Image,
+      Table.configure({
+        resizable: true,
+      }),
+      TableRow,
+      TableHeader,
+      TableCell,
     ],
     content: noteContent || '<p></p>',
     editorProps: {

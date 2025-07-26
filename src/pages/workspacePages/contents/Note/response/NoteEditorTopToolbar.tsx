@@ -4,23 +4,28 @@ import './style/NoteEditorTopToolbar.css';
 import { 
   Undo2, 
   Redo2, 
+  Type,
   Bold, 
   Italic, 
   Underline, 
   Strikethrough, 
+  AlignLeft,
+  AlignCenter,
+  AlignRight,
   List, 
   ListOrdered, 
-  AlignLeft, 
-  Link, 
+  Link2, 
   Code, 
-  Smile, 
-  Image, 
+  Quote,
+  Table,
+  Image as ImageIcon, 
   Video, 
   ZoomIn, 
   ZoomOut,
   ChevronUp,
   ChevronDown,
-  Save
+  Save,
+  Highlighter
 } from 'lucide-react';
 
 interface NoteEditorTopToolbarProps {
@@ -64,11 +69,13 @@ function NoteEditorTopToolbar({ onBack, editor, onZoomIn, onZoomOut, isInSplitMo
 
   // Function to handle bullet list
   const handleBulletList = () => {
+    console.log('Toggling bullet list');
     editor?.chain().focus().toggleBulletList().run();
   };
 
   // Function to handle ordered list
   const handleOrderedList = () => {
+    console.log('Toggling ordered list');
     editor?.chain().focus().toggleOrderedList().run();
   };
 
@@ -82,13 +89,123 @@ function NoteEditorTopToolbar({ onBack, editor, onZoomIn, onZoomOut, isInSplitMo
     editor?.chain().focus().redo().run();
   };
 
+  // Function to handle text alignment
+  const handleAlignLeft = () => {
+    editor?.chain().focus().setTextAlign('left').run();
+  };
+
+  const handleAlignCenter = () => {
+    editor?.chain().focus().setTextAlign('center').run();
+  };
+
+  const handleAlignRight = () => {
+    editor?.chain().focus().setTextAlign('right').run();
+  };
+
+  // Function to handle link
+  const handleLink = () => {
+    const url = window.prompt('Enter URL:');
+    if (url) {
+      editor?.chain().focus().setLink({ href: url }).run();
+    }
+  };
+
+  // Function to handle code block
+  const handleCodeBlock = () => {
+    editor?.chain().focus().toggleCodeBlock().run();
+  };
+
+  // Function to handle blockquote
+  const handleBlockquote = () => {
+    editor?.chain().focus().toggleBlockquote().run();
+  };
+
+  // Function to handle table
+  const handleTable = () => {
+    editor?.chain().focus().insertTable({ rows: 3, cols: 3, withHeaderRow: true }).run();
+  };
+
+  // Function to handle image
+  const handleImage = () => {
+    const url = window.prompt('Enter image URL:');
+    if (url) {
+      editor?.chain().focus().setImage({ src: url }).run();
+    }
+  };
+
+  // Function to handle text color
+  const handleTextColor = (color: string) => {
+    console.log('Setting text color:', color);
+    if (!editor) return;
+    
+    if (color === 'inherit') {
+      editor.chain().focus().unsetColor().run();
+    } else {
+      editor.chain().focus().setColor(color).run();
+    }
+  };
+
+  // Function to handle highlight
+  const handleHighlight = (color: string) => {
+    console.log('Setting highlight color:', color);
+    if (!editor) return;
+    
+    if (color === 'transparent') {
+      editor.chain().focus().unsetHighlight().run();
+    } else {
+      editor.chain().focus().setHighlight({ color }).run();
+    }
+  };
+
   // Function to toggle collapse state
   const handleToggleCollapse = () => {
     setIsCollapsed(!isCollapsed);
   };
 
+  // Color picker state
+  const [showTextColorPicker, setShowTextColorPicker] = useState(false);
+  const [showHighlightColorPicker, setShowHighlightColorPicker] = useState(false);
+
+  // Close color pickers when clicking outside
+  useEffect(() => {
+    const handleClickOutside = (event: MouseEvent) => {
+      if (!event.target) return;
+      
+      const target = event.target as Element;
+      if (!target.closest('.color-picker-container')) {
+        setShowTextColorPicker(false);
+        setShowHighlightColorPicker(false);
+      }
+    };
+
+    document.addEventListener('mousedown', handleClickOutside);
+    return () => document.removeEventListener('mousedown', handleClickOutside);
+  }, []);
+
+  // Color options - exact values from reference code
+  const TEXT_COLORS = [
+    { name: 'Default', color: 'inherit' },
+    { name: 'Gray', color: '#6B7280' },
+    { name: 'Red', color: '#EF4444' },
+    { name: 'Yellow', color: '#F59E0B' },
+    { name: 'Green', color: '#10B981' },
+    { name: 'Blue', color: '#3B82F6' },
+    { name: 'Purple', color: '#8B5CF6' },
+    { name: 'Pink', color: '#EC4899' },
+  ];
+
+  const HIGHLIGHT_COLORS = [
+    { name: 'None', color: 'transparent', isNone: true },
+    { name: 'Yellow', color: '#FEF9C3' },
+    { name: 'Green', color: '#DCFCE7' },
+    { name: 'Blue', color: '#DBEAFE' },
+    { name: 'Purple', color: '#F3E8FF' },
+    { name: 'Pink', color: '#FCE7F3' },
+    { name: 'Gray', color: '#F3F4F6' },
+  ];
+
   return (
-    <div className="flex flex-col items-center" style={{ paddingTop: '40px' }}>
+    <div className="flex flex-col items-center" style={{ paddingTop: '15px' }}>
       {/* Collapsible content */}
       <div 
         className={`collapsible-content ${isCollapsed ? 'collapsed' : 'expanded'} w-full mx-auto`}
@@ -156,7 +273,7 @@ function NoteEditorTopToolbar({ onBack, editor, onZoomIn, onZoomOut, isInSplitMo
         <div 
           className="toolbar-inner flex items-center bg-[#F8F8F8] rounded-full border border-[#DFDFDF] py-1.5 w-full mx-auto overflow-x-auto"
           style={{
-            gap: isInSplitMode ? '4px' : '8px',
+            gap: isInSplitMode ? '2px' : '4px',
             padding: '6px 12px',
             maxWidth: isInSplitMode ? '600px' : '800px',
             transition: 'all 0.3s ease-in-out'
@@ -164,17 +281,50 @@ function NoteEditorTopToolbar({ onBack, editor, onZoomIn, onZoomOut, isInSplitMo
         >
           {/* Undo/Redo */}
           <button 
-            className={`p-1 text-gray-600 hover:bg-gray-100 rounded-full ${editor?.isActive('undo') ? 'bg-[#DFEDFF]' : ''}`}
+            className={`p-1 text-gray-600 hover:bg-gray-100 rounded-full ${!editor?.can().undo() ? 'opacity-50' : ''}`}
             onClick={handleUndo}
+            disabled={!editor?.can().undo()}
+            title="Undo (Ctrl+Z)"
           >
-            <Undo2 size={20} />
+            <Undo2 size={16} />
           </button>
           <button 
-            className={`p-1 text-gray-600 hover:bg-gray-100 rounded-full ${editor?.isActive('redo') ? 'bg-[#DFEDFF]' : ''}`}
+            className={`p-1 text-gray-600 hover:bg-gray-100 rounded-full ${!editor?.can().redo() ? 'opacity-50' : ''}`}
             onClick={handleRedo}
+            disabled={!editor?.can().redo()}
+            title="Redo (Ctrl+Y)"
           >
-            <Redo2 size={20} />
+            <Redo2 size={16} />
           </button>
+          
+          {!isInSplitMode && <span className="mx-2 text-gray-300">|</span>}
+          
+          {/* Text Style Dropdown */}
+          <select
+            onChange={e => {
+              const value = e.target.value;
+              if (value === 'paragraph') {
+                editor?.chain().focus().setParagraph().run();
+              } else {
+                editor?.chain().focus().toggleHeading({ level: parseInt(value) }).run();
+              }
+            }}
+            value={
+              editor?.isActive('heading', { level: 1 })
+                ? '1'
+                : editor?.isActive('heading', { level: 2 })
+                ? '2'
+                : editor?.isActive('heading', { level: 3 })
+                ? '3'
+                : 'paragraph'
+            }
+            className="px-2 py-1 text-sm border border-gray-300 rounded bg-white text-gray-700"
+          >
+            <option value="paragraph">Normal</option>
+            <option value="1">Heading 1</option>
+            <option value="2">Heading 2</option>
+            <option value="3">Heading 3</option>
+          </select>
           
           {!isInSplitMode && <span className="mx-2 text-gray-300">|</span>}
           
@@ -182,26 +332,55 @@ function NoteEditorTopToolbar({ onBack, editor, onZoomIn, onZoomOut, isInSplitMo
           <button 
             className={`p-1 ${editor?.isActive('bold') ? 'bg-[#DFEDFF]' : ''} text-gray-600 hover:bg-gray-100 rounded-full`}
             onClick={handleBold}
+            title="Bold (Ctrl+B)"
           >
-            <Bold size={20} />
+            <Bold size={16} />
           </button>
           <button 
             className={`p-1 ${editor?.isActive('italic') ? 'bg-[#DFEDFF]' : ''} text-gray-600 hover:bg-gray-100 rounded-full`}
             onClick={handleItalic}
+            title="Italic (Ctrl+I)"
           >
-            <Italic size={20} />
+            <Italic size={16} />
           </button>
           <button 
             className={`p-1 ${editor?.isActive('underline') ? 'bg-[#DFEDFF]' : ''} text-gray-600 hover:bg-gray-100 rounded-full`}
             onClick={handleUnderline}
+            title="Underline (Ctrl+U)"
           >
-            <Underline size={20} />
+            <Underline size={16} />
           </button>
           <button 
             className={`p-1 ${editor?.isActive('strike') ? 'bg-[#DFEDFF]' : ''} text-gray-600 hover:bg-gray-100 rounded-full`}
             onClick={handleStrike}
+            title="Strikethrough"
           >
-            <Strikethrough size={20} />
+            <Strikethrough size={16} />
+          </button>
+          
+          {!isInSplitMode && <span className="mx-2 text-gray-300">|</span>}
+          
+          {/* Text Alignment */}
+          <button 
+            className={`p-1 ${editor?.isActive({ textAlign: 'left' }) ? 'bg-[#DFEDFF]' : ''} text-gray-600 hover:bg-gray-100 rounded-full`}
+            onClick={handleAlignLeft}
+            title="Align Left"
+          >
+            <AlignLeft size={16} />
+          </button>
+          <button 
+            className={`p-1 ${editor?.isActive({ textAlign: 'center' }) ? 'bg-[#DFEDFF]' : ''} text-gray-600 hover:bg-gray-100 rounded-full`}
+            onClick={handleAlignCenter}
+            title="Align Center"
+          >
+            <AlignCenter size={16} />
+          </button>
+          <button 
+            className={`p-1 ${editor?.isActive({ textAlign: 'right' }) ? 'bg-[#DFEDFF]' : ''} text-gray-600 hover:bg-gray-100 rounded-full`}
+            onClick={handleAlignRight}
+            title="Align Right"
+          >
+            <AlignRight size={16} />
           </button>
           
           {!isInSplitMode && <span className="mx-2 text-gray-300">|</span>}
@@ -210,37 +389,120 @@ function NoteEditorTopToolbar({ onBack, editor, onZoomIn, onZoomOut, isInSplitMo
           <button 
             className={`p-1 ${editor?.isActive('bulletList') ? 'bg-[#DFEDFF]' : ''} text-gray-600 hover:bg-gray-100 rounded-full`}
             onClick={handleBulletList}
+            title="Bullet List"
           >
-            <List size={20} />
+            <List size={16} />
           </button>
           <button 
             className={`p-1 ${editor?.isActive('orderedList') ? 'bg-[#DFEDFF]' : ''} text-gray-600 hover:bg-gray-100 rounded-full`}
             onClick={handleOrderedList}
+            title="Numbered List"
           >
-            <ListOrdered size={20} />
-          </button>
-          <button className="p-1 text-gray-600 hover:bg-gray-100 rounded-full">
-            <AlignLeft size={20} />
+            <ListOrdered size={16} />
           </button>
           
           {!isInSplitMode && <span className="mx-2 text-gray-300">|</span>}
           
-          {/* Link, Code, Mention, Emoji, Image, Video */}
-          <button className={`p-1 text-gray-600 hover:bg-gray-100 rounded-full ${isInSplitMode ? 'hidden' : ''}`}>
-            <Link size={20} />
+          {/* Insert Tools */}
+          <button 
+            className={`p-1 text-gray-600 hover:bg-gray-100 rounded-full ${isInSplitMode ? 'hidden' : ''}`}
+            onClick={handleImage}
+            title="Insert Image"
+          >
+            <ImageIcon size={16} />
           </button>
-          <button className={`p-1 text-gray-600 hover:bg-gray-100 rounded-full ${isInSplitMode ? 'hidden' : ''}`}>
-            <Code size={20} />
+          <button 
+            className={`p-1 ${editor?.isActive('link') ? 'bg-[#DFEDFF]' : ''} text-gray-600 hover:bg-gray-100 rounded-full ${isInSplitMode ? 'hidden' : ''}`}
+            onClick={handleLink}
+            title="Insert Link"
+          >
+            <Link2 size={16} />
           </button>
-          <button className={`p-1 text-gray-600 hover:bg-gray-100 rounded-full ${isInSplitMode ? 'hidden' : ''}`}>
-            <Smile size={20} />
+          <button 
+            className={`p-1 text-gray-600 hover:bg-gray-100 rounded-full ${isInSplitMode ? 'hidden' : ''}`}
+            onClick={handleTable}
+            title="Insert Table"
+          >
+            <Table size={16} />
           </button>
-          <button className={`p-1 text-gray-600 hover:bg-gray-100 rounded-full ${isInSplitMode ? 'hidden' : ''}`}>
-            <Image size={20} />
+          <button 
+            className={`p-1 ${editor?.isActive('blockquote') ? 'bg-[#DFEDFF]' : ''} text-gray-600 hover:bg-gray-100 rounded-full ${isInSplitMode ? 'hidden' : ''}`}
+            onClick={handleBlockquote}
+            title="Block Quote"
+          >
+            <Quote size={16} />
           </button>
-          <button className={`p-1 text-gray-600 hover:bg-gray-100 rounded-full ${isInSplitMode ? 'hidden' : ''}`}>
-            <Video size={20} />
+          <button 
+            className={`p-1 ${editor?.isActive('codeBlock') ? 'bg-[#DFEDFF]' : ''} text-gray-600 hover:bg-gray-100 rounded-full ${isInSplitMode ? 'hidden' : ''}`}
+            onClick={handleCodeBlock}
+            title="Code Block"
+          >
+            <Code size={16} />
           </button>
+          
+          {!isInSplitMode && <span className="mx-2 text-gray-300">|</span>}
+          
+          {/* Color Pickers */}
+          <div className="relative color-picker-container">
+            <button
+              onClick={() => setShowTextColorPicker(!showTextColorPicker)}
+              className="p-1 text-gray-600 hover:bg-gray-100 rounded-full relative"
+              title="Text Color"
+            >
+              <Type size={16} />
+              <div className="w-2 h-2 rounded-full absolute bottom-1 right-1 bg-blue-500"></div>
+            </button>
+            {showTextColorPicker && (
+              <div className="absolute top-full left-0 mt-1 bg-white border border-gray-300 rounded shadow-lg z-50">
+                <div className="grid grid-cols-4 gap-1 p-2" style={{ width: '120px' }}>
+                  {TEXT_COLORS.map((color, index) => (
+                    <button
+                      key={index}
+                      onClick={() => {
+                        handleTextColor(color.color);
+                        setShowTextColorPicker(false);
+                      }}
+                      className="w-6 h-6 rounded hover:scale-110 transition-transform"
+                      style={{ backgroundColor: color.color }}
+                      title={color.name}
+                    />
+                  ))}
+                </div>
+              </div>
+            )}
+          </div>
+
+          <div className="relative color-picker-container">
+            <button
+              onClick={() => setShowHighlightColorPicker(!showHighlightColorPicker)}
+              className="p-1 text-gray-600 hover:bg-gray-100 rounded-full relative"
+              title="Highlight Color"
+            >
+              <Highlighter size={16} />
+              <div className="w-2 h-2 rounded-full absolute bottom-1 right-1 bg-yellow-300"></div>
+            </button>
+            {showHighlightColorPicker && (
+              <div className="absolute top-full left-0 mt-1 bg-white border border-gray-300 rounded shadow-lg z-50">
+                <div className="grid grid-cols-4 gap-1 p-2" style={{ width: '120px' }}>
+                  {HIGHLIGHT_COLORS.map((color, index) => (
+                    <button
+                      key={index}
+                      onClick={() => {
+                        handleHighlight(color.color);
+                        setShowHighlightColorPicker(false);
+                      }}
+                      className="w-6 h-6 rounded hover:scale-110 transition-transform"
+                      style={{ 
+                        backgroundColor: color.color,
+                        border: color.isNone ? '1px solid #D1D5DB' : '1px solid rgba(0,0,0,0.1)'
+                      }}
+                      title={color.name}
+                    />
+                  ))}
+                </div>
+              </div>
+            )}
+          </div>
           
           {/* Zoom buttons and collapse button - right aligned */}
           <div className="ml-auto flex items-center gap-2">
@@ -251,7 +513,7 @@ function NoteEditorTopToolbar({ onBack, editor, onZoomIn, onZoomOut, isInSplitMo
               disabled={isSaving}
               title="Save Note"
             >
-              <Save size={20} />
+              <Save size={16} />
             </button>
             
             <button 
@@ -259,14 +521,14 @@ function NoteEditorTopToolbar({ onBack, editor, onZoomIn, onZoomOut, isInSplitMo
               onClick={onZoomIn}
               title="Zoom In"
             >
-              <ZoomIn size={20} />
+              <ZoomIn size={16} />
             </button>
             <button 
               className="p-1 text-gray-600 hover:bg-gray-100 rounded-full"
               onClick={onZoomOut}
               title="Zoom Out"
             >
-              <ZoomOut size={20} />
+              <ZoomOut size={16} />
             </button>
             
             {/* Collapse button */}
@@ -275,11 +537,13 @@ function NoteEditorTopToolbar({ onBack, editor, onZoomIn, onZoomOut, isInSplitMo
               onClick={handleToggleCollapse}
               title={isCollapsed ? "展开" : "收起"}
             >
-              {isCollapsed ? <ChevronDown size={20} /> : <ChevronUp size={20} />}
+              {isCollapsed ? <ChevronDown size={16} /> : <ChevronUp size={16} />}
             </button>
           </div>
         </div>
       </div>
+
+
     </div>
   );
 }
