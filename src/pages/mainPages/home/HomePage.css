@@ -1,0 +1,31 @@
+/* HomePage specific styles */
+.homepage-container {
+  font-family: 'IBM Plex Sans', sans-serif;
+}
+
+/* Card hover effects */
+.card-hover {
+  transition: all 0.2s ease-in-out;
+}
+
+.card-hover:hover {
+  transform: translateY(-2px);
+  box-shadow: 0 10px 25px rgba(0, 0, 0, 0.1);
+}
+
+/* Custom gradient backgrounds for news cards */
+.news-card-1 {
+  background: linear-gradient(135deg, #e3f2fd 0%, #f3e5f5 100%);
+}
+
+.news-card-2 {
+  background: linear-gradient(135deg, #e8f5e8 0%, #e3f2fd 100%);
+}
+
+.news-card-3 {
+  background: linear-gradient(135deg, #fff3e0 0%, #ffebee 100%);
+}
+
+.news-card-4 {
+  background: #ff9800;
+} 
