@@ -124,7 +124,7 @@ export const getDriveFiles = async (): Promise<{
 
     console.log('📁 Fetching drive files for workspace:', workspaceId);
 
-    const response = await fetch(`${API_BASE_URL}/api/v1/drive/get_drive_files`, {
+    const response = await fetch(`${API_BASE_URL}/api/v1/drive/list_drive_files`, {
       method: 'POST',
       headers: createAuthHeaders(),
       body: JSON.stringify({
